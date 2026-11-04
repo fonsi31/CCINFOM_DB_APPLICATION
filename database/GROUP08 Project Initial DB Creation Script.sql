@@ -41,6 +41,27 @@ CREATE TABLE applicant (
  revno INT UNSIGNED NOT NULL DEFAULT 1
 ) ENGINE=InnoDB;
 
+-- enhancement
+CREATE TABLE college (
+	collcode VARCHAR(8) NOT NULL PRIMARY KEY,
+    collname VARCHAR(100) NOT NULL
+) ENGINE=InnoDB;
+
+-- enhancement
+INSERT INTO college (collcode, collname)
+SELECT DISTINCT collcode, collname
+FROM applicant;
+
+-- enhancement
+ALTER TABLE applicant
+drop column collname;
+
+-- enhancement
+ALTER TABLE applicant
+ADD CONSTRAINT fk_applicant_college
+foreign key (collcode)
+references college(collcode);
+
 CREATE TABLE program (
  progcode VARCHAR(12) NOT NULL PRIMARY KEY,
  progname VARCHAR(120) NOT NULL,
