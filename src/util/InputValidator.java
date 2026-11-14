@@ -12,7 +12,7 @@ public class InputValidator {
 	 * 
 	 * @param sc input scanner
 	 * @param ub the maximum allowable input
-	 * @return returns 0 if input is invalid otherwise it returns the parsed input
+	 * @return the parsed integer if valid, 0 otherwise
 	 */
 	public static int getValidInt(Scanner sc, int ub) {
 		String choice = sc.nextLine();

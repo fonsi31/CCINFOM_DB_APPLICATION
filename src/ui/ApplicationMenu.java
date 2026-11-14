@@ -14,18 +14,20 @@ public class ApplicationMenu {
 	
 	public void run() {
 		
-		int choice;
+		int choice = 0;
 		
-		while (true) {
+		menuLoop:
+		while (choice == 0) {
 			TerminalManager.clearScreen();
-			System.out.println("1. Register Applicant");
-			System.out.println("2. Search Applicants");
-			System.out.println("3. Edit Applicant");
-			System.out.println("4. Delete Applicant");
-			System.out.println("5. Back");
-			
+			System.out.println("[1] Create Application");
+			System.out.println("[2] Search Applications");
+			System.out.println("[3] Edit Application");
+			System.out.println("[4] Delete Application");
+			System.out.println("[5] Display Applications");
+			System.out.println("[6] Select Application");
+			System.out.println("[7] Back");
 			System.out.print("Enter choice: ");
-			choice = InputValidator.getValidInt(sc, 5);
+			choice = InputValidator.getValidInt(this.sc, 7);
 			
 			switch(choice) {
 				case 1:
@@ -42,12 +44,23 @@ public class ApplicationMenu {
 					
 				case 5:
 					break;
+				
+				case 6:
+					break;
+				
+				case 7:
+					break menuLoop;
 					
 				default:
 					System.out.println("Invalid Input!");
 					TerminalManager.pause(sc);
+					break;
 			}
 					
 		}
+	}
+	
+	public static void displayAllApplications() {
+		//
 	}
 }
