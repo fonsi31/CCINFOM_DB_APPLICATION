@@ -1,4 +1,4 @@
-package com.scholarship.ui;
+package ui;
 
 import java.util.InputMismatchException;
 import java.util.Scanner;
