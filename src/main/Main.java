@@ -24,6 +24,8 @@ public class Main {
 		
 		
 		//menus/uis
+		MainMenu mainMenu = new MainMenu(sc);
+		mainMenu.start();
 	}
 
 }

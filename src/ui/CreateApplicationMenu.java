@@ -3,6 +3,7 @@ import java.util.Scanner;
 import service.*;
 import model.*;
 import util.*;
+import java.sql.*;
 
 public class CreateApplicationMenu {
 	
@@ -62,7 +63,16 @@ public class CreateApplicationMenu {
 				continue;
 			}
 			
-			this.applicationService.createApplication(applicant, offering);
+			try {
+				this.applicationService.createApplication(applicant, offering);
+			}
+			catch(IllegalArgumentException e) {
+				System.out.println(e.getMessage());
+			}
+			catch(SQLException e) {
+				System.out.println("Database error " + e.getMessage());
+			}
+			
 		}
 	}
 }
