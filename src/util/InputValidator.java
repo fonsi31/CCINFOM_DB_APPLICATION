@@ -11,24 +11,25 @@ public class InputValidator {
 	 * Gets valid integer user input and also checks if it's within the permitted range
 	 * 
 	 * @param sc input scanner
-	 * @param ub the maximum allowable input
-	 * @return the parsed integer if valid, 0 otherwise
+	 * @param lb the minimum allowable integer input
+	 * @param ub the maximum allowable integer input
+	 * @return the parsed integer if valid, -1 otherwise
 	 */
-	public static int getValidInt(Scanner sc, int ub) {
+	public static int getValidInt(Scanner sc, int lb, int ub) {
 		String choice = sc.nextLine();
 		int num;
 		
 		try{
 			num = Integer.parseInt(choice);
 			
-			if(num < 1 || num > ub) {
-				return 0;
+			if(num < lb || num > ub) {
+				return -1;
 			}
 			
 			return num;
 		}
 		catch(NumberFormatException e) {
-			return 0;
+			return -1;
 		}
 	}
 }

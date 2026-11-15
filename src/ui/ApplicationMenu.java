@@ -1,18 +1,24 @@
 package ui;
 import java.util.Scanner;
-import util.TerminalManager;
-import util.InputValidator;
+import service.*;
+import util.*;
 
 public class ApplicationMenu {
 	private MainMenu parentMenu;
 	private Scanner sc;
+	private CreateApplicationMenu createMenu;
+	private ApplicantService applicantService;
+	private OfferingService offeringService;
+	private ApplicationService applicationService;
 	
-	public ApplicationMenu(MainMenu parentMenu, Scanner sc) {
+	public ApplicationMenu(MainMenu parentMenu, Scanner sc, ApplicantService applicantService,
+			OfferingService offeringService, ApplicationService applicationService) {
 		this.parentMenu = parentMenu;
 		this.sc = sc;
+		this.createMenu = new CreateApplicationMenu(this, sc, applicantService, offeringService, applicationService);
 	}
 	
-	public void run() {
+	public void run() {  
 		
 		int choice = 0;
 		
@@ -27,10 +33,11 @@ public class ApplicationMenu {
 			System.out.println("[6] Select Application");
 			System.out.println("[7] Back");
 			System.out.print("Enter choice: ");
-			choice = InputValidator.getValidInt(this.sc, 7);
+			choice = InputValidator.getValidInt(this.sc, 1, 7);
 			
 			switch(choice) {
 				case 1:
+					this.createMenu.run();
 					break;
 					
 				case 2:
@@ -60,7 +67,11 @@ public class ApplicationMenu {
 		}
 	}
 	
-	public static void displayAllApplications() {
-		//
+	public static void displayApplications() {
+		//use service to retrieve applications;
+	}
+	
+	public static void displayOfferings() {
+		//use service to retrieve offerings by application
 	}
 }

@@ -2,7 +2,7 @@ package ui;
 import java.util.Scanner;
 import util.InputValidator;
 import util.TerminalManager;
-
+import service.ApplicationService;
 
 public class DocumentsMenu {
 	
@@ -18,7 +18,7 @@ public class DocumentsMenu {
 		int appNo;
 		
 		System.out.println("============= Select an Application to Manage Documents for ============");
-		ApplicationMenu.displayAllApplications();
+		ApplicationMenu.displayApplications();
 		System.out.print("Enter Application Number: ");
 	}
 	

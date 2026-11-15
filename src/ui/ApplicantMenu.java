@@ -44,12 +44,16 @@ public class ApplicantMenu {
 		}
 	}
 	
-	private void manageApplicantsMenu(){
+	public void manageApplicantsMenu(){
             System.out.println("Manage Applicants: ");
             System.out.println("[1] Register Applicant");
             System.out.println("[2] Search Applicants");
             System.out.println("[3] Edit Applicant");
             System.out.println("[4] Delete Applicant");
             System.out.println("[0] Back to Main Menu");	
+	}
+	
+	public static void displayApplicants() {
+		//use service to retrieve applicants
 	}
 }

@@ -1,4 +1,3 @@
-
 package ui;
 
 import java.util.InputMismatchException;
@@ -6,7 +5,11 @@ import java.util.Scanner;
 
 public class MainMenu {
 
-    private Scanner sc = new Scanner(System.in);
+    private Scanner sc;
+    
+    public MainMenu(Scanner sc) {
+    	this.sc = sc;
+    }
 
     public void start() {
         boolean running = true;
@@ -45,7 +48,7 @@ public class MainMenu {
 		}
     }
 
-    private void displayMenu() {
+    public void displayMenu() {
         System.out.println("==========================================");
         System.out.println("    SCHOLARSHIP MANAGEMENT SYSTEM         ");
         System.out.println("==========================================");

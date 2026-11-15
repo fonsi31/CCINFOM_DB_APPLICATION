@@ -26,7 +26,7 @@ public class ReportsMenu {
 			System.out.println("[4] Document Submissions by Verification Result");
 			System.out.println("[5] Back");
 			System.out.print("Choice: ");
-			choice = InputValidator.getValidInt(sc, 5);
+			choice = InputValidator.getValidInt(sc, 1, 5);
 			
 			switch(choice) {
 				case 1:
