@@ -48,7 +48,7 @@ public class CreateApplicationMenu {
 			
 			System.out.println("Select an offering to apply on (0 to go back): ");
 			ApplicationMenu.displayOfferings();
-			System.out.print("Please enter offer no: ");
+			System.out.print("Please enter offer no (0 to go back): ");
 			offerno = sc.nextLine();
 			
 			if (offerno.equals("0")) {
@@ -65,12 +65,16 @@ public class CreateApplicationMenu {
 			
 			try {
 				this.applicationService.createApplication(applicant, offering);
+				System.out.println("Application Submitted!");
+				TerminalManager.pause(sc);
 			}
 			catch(IllegalArgumentException e) {
 				System.out.println(e.getMessage());
+				TerminalManager.pause(sc);
 			}
 			catch(SQLException e) {
 				System.out.println("Database error " + e.getMessage());
+				TerminalManager.pause(sc);
 			}
 			
 		}

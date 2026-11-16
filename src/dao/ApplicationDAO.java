@@ -1,5 +1,6 @@
 package dao;
 import util.*;
+import model.*;
 import java.sql.*;
 
 public class ApplicationDAO {
@@ -32,7 +33,7 @@ public class ApplicationDAO {
 		
 	}
 	
-	public void insertApplication() {
+	public void insertApplication(ApplicationModel application) {
 		//
 	}
 }

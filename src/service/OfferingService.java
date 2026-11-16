@@ -1,5 +1,6 @@
 package service;
 import java.util.Scanner;
+import java.util.ArrayList;
 import model.*;
 
 public class OfferingService {
@@ -13,6 +14,10 @@ public class OfferingService {
 	}
 	
 	public OfferingModel getOfferingByOfferno(String offerno) {
+		//
+	}
+	
+	public List<OfferingModel> getOpenOfferings(){
 		//
 	}
 }
