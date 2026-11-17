@@ -100,7 +100,7 @@ where progtype = 'FirstAward';
 
 -- populate renewal table
 insert into renewal_program(progcode, minunits, maxgpa)
-select progcode, entrymin, incomecp
+select progcode, minunits, maxgpa
 from program
 where progtype = 'Renewal';
 
@@ -110,3 +110,7 @@ DROP COLUMN entrymin,
 DROP COLUMN incomecp,
 DROP COLUMN minunits,
 DROP COLUMN maxgpa;
+
+-- forgot to add this
+alter table program
+DROP COLUMN agenname;

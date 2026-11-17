@@ -36,8 +36,6 @@ public class ApplicationModel {
         this.submitdt = submitdt;
         this.entryavg = entryavg;
         this.income = income;
-        this.status = ApplicationStatus.SUBMITTED;
-        this.revno = 1;
     }
 
     // Constructor for retrieving an existing application
@@ -159,5 +157,9 @@ public class ApplicationModel {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+    
+    public void updateRevno() {
+    	this.revno++;
     }
 }

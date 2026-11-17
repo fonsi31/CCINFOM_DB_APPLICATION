@@ -1,5 +1,6 @@
 package service;
 import java.util.ArrayList;
+import enums.*;
 import java.time.LocalDate;
 import dao.*;
 import model.*;
@@ -7,15 +8,18 @@ import util.InputValidator;
 import java.math.BigDecimal;
 import java.util.Scanner;
 import util.*;
+import java.sql.*;
 
 public class ApplicationService {
 	
 	private ApplicationDAO applicationDAO;
+	private ProgramService programService;
 	private Scanner sc;
 	
-	public ApplicationService(ApplicationDAO applicationDAO, Scanner sc) {
+	public ApplicationService(ApplicationDAO applicationDAO, Scanner sc, ProgramService programService) {
 		this.applicationDAO = applicationDAO;
 		this.sc = sc;
+		this.programService = programService;
 	}
 	
 	public List<ApplicationModel> getAllApplications() {
@@ -35,13 +39,20 @@ public class ApplicationService {
 				 	"Student has already applied to this offering");
 		}
 		
+		//prepare the application's attributes
 		String appno = this.generateAppno();
 		LocalDate submitdt = LocalDate.now();
 		BigDecimal entryavg = null;
 		BigDecimal income = null;
-		ProgramModel program = ProgramService.getProgByProgcode(offering.getProgcode());
+		ProgramModel program = this.programService.getProgByProgCode(offering.getProgcode());
 		
-		if (program.getProgtype().equalsIgnoreCase("firstaward")) {
+		if(program == null) {
+			throw new IllegalArgumentException(
+					"No program found!");
+		}
+		
+		//ask for entryavg and income if offering is of firstaward progtype
+		if (program.getProgtype() == ProgramType.FIRSTAWARD) {
 			//ask user to enter entryavg and income
 			while (true) {
 				entryavg = InputValidator.getValidEntryavg(sc);
@@ -56,16 +67,26 @@ public class ApplicationService {
 			}
 		}
 		
+		//instantiate an application object
 		ApplicationModel application = new ApplicationModel(
 				appno, studno, offerno, submitdt, entryavg, income);
 		
-		applicationDAO.insertApplication(application);
+		//insert to db
+		boolean success = applicationDAO.insertApplication(application);
+		
+		if(success) {
+			System.out.println("Application successfully created!");
+		}
+		else {
+			System.out.println("Application was not created");
+		}
 	}
 	
+	//checks if offering is still open and application is still within the application window
 	public void validateOffering(OfferingModel offering) {
 		LocalDate today = LocalDate.now();
 		
-		if(!(offering.getStatus().equalsIgnoreCase("Open"))) {
+		if(offering.getStatus() != OfferingStatus.OPEN) {
 			throw new IllegalArgumentException(
 					"Offering is not Open");
 			
@@ -77,7 +98,21 @@ public class ApplicationService {
 		}
 	}
 	
-	public String generateAppno() {
+	//generates unique appno
+	public String generateAppno() throws SQLException{
 		//generate unique application number for a new application
+		String currentYear = String.valueOf(LocalDate.now().getYear());
+		String latestAppno = this.applicationDAO.getLatestAppno();
+		
+		if(latestAppno == null) {
+			return "AP" + currentYear + "0001";
+		}
+	
+		int latestAppnoSeq = Integer.parseInt(latestAppno.substring(6));
+		latestAppnoSeq++;
+		
+		String formattedSeq = String.format("%04d", latestAppnoSeq);
+		
+		return "AP" + currentYear + formattedSeq;
 	}
 }

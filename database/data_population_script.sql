@@ -397,7 +397,6 @@ INSERT INTO renewal_program (progcode, minunits, maxgpa) VALUES
 ('PR006', 17, 2.75),
 ('PR008', 18, 2.50);
 
-
 -- offering: 34 simulated records.
 INSERT INTO `offering` (`offerno`, `progcode`, `title`, `opendt`, `closedt`, `coverst`, `coverend`, `slots`, `status`, `remarks`, `revno`) VALUES
 ('OF2024001', 'PR001', '2024 Midyear PR001 application intake', '2024-03-01', '2024-03-31', '2024-07-01', '2024-12-31', 3, 'Closed', NULL, 1),

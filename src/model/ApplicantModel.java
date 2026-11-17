@@ -27,7 +27,6 @@ public class ApplicantModel {
         this.regdate = regdate;
         this.collcode = collcode;
         this.course = course;
-        this.revno = 1;
     }
     
     //Constructor for retrieval
@@ -110,7 +109,7 @@ public class ApplicantModel {
         this.course = course;
     }
 
-    public void setRevno(int revno) {
-        this.revno = revno;
+    public void updateRevno() {
+        this.revno++;
     }
 }

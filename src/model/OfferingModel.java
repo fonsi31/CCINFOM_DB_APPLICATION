@@ -1,7 +1,6 @@
 package model;
 import enums.*;
 import java.time.LocalDate;
-
 import enums.*;
 
 public class OfferingModel {
@@ -43,9 +42,6 @@ public class OfferingModel {
         else {
         	this.slots = slots;
         }
-        
-        this.status = OfferingStatus.PLANNED;
-        this.revno = 1;
     }
     
     //constructor for retrieval
@@ -153,7 +149,7 @@ public class OfferingModel {
         this.remarks = remarks;
     }
 
-    public void setRevno(int revno) {
-        this.revno = revno;
+    public void updateRevno() {
+        this.revno++;
     }
 }
