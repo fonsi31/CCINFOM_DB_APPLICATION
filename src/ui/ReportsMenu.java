@@ -18,7 +18,7 @@ public class ReportsMenu {
 		int choice = 0;
 		
 		menuLoop:
-		while (choice == 0) {
+		while (true) {
 			TerminalManager.clearScreen();
 			System.out.println("[1] Applicant Submission Participation");
 			System.out.println("[2] Applications Received by Offering");

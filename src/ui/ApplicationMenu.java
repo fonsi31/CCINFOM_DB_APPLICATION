@@ -23,7 +23,7 @@ public class ApplicationMenu {
 		int choice = 0;
 		
 		menuLoop:
-		while (choice == 0) {
+		while (true) {
 			TerminalManager.clearScreen();
 			System.out.println("[1] Create Application");
 			System.out.println("[2] Search Applications");
