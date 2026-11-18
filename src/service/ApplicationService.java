@@ -186,11 +186,3 @@ public class ApplicationService {
 		}
 	}
 }
-
-
-
-
-
-
-
-
