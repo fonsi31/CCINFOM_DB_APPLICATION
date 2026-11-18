@@ -4,18 +4,18 @@ import service.*;
 import util.*;
 
 public class ApplicationMenu {
-	private MainMenu parentMenu;
 	private Scanner sc;
 	private CreateApplicationMenu createMenu;
+	private ApplicationSearchMenu searchMenu;
 	private ApplicantService applicantService;
 	private OfferingService offeringService;
 	private ApplicationService applicationService;
 	
-	public ApplicationMenu(MainMenu parentMenu, Scanner sc, ApplicantService applicantService,
+	public ApplicationMenu(Scanner sc, ApplicantService applicantService,
 			OfferingService offeringService, ApplicationService applicationService) {
-		this.parentMenu = parentMenu;
 		this.sc = sc;
-		this.createMenu = new CreateApplicationMenu(this, sc, applicantService, offeringService, applicationService);
+		this.createMenu = new CreateApplicationMenu(sc, applicantService,
+													offeringService, applicationService);
 	}
 	
 	public void run() {  

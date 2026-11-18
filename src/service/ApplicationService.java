@@ -22,8 +22,8 @@ public class ApplicationService {
 		this.programService = programService;
 	}
 	
-	public List<ApplicationModel> getAllApplications() {
-		
+	public ArrayList<ApplicationModel> getAllApplications() throws SQLException{
+		return applicationDAO.retrieveAllApplications();
 	}
 	
 	public void createApplication(ApplicantModel applicant, OfferingModel offering) throws SQLException{
@@ -115,4 +115,82 @@ public class ApplicationService {
 		
 		return "AP" + currentYear + formattedSeq;
 	}
+	
+	public ArrayList<ApplicationModel> getApplicationBy(
+			int mode, String identifier) throws SQLException{
+		
+		String query;
+		
+		switch(mode) {
+		
+		//by appno
+		case 1: 
+			query = """
+					SELECT *
+					FROM application
+					WHERE appno = ?
+					""";
+			
+			return this.applicationDAO.getApplicationBy(query, identifier);
+			
+		//by studno
+		case 2: 
+			query = """
+			SELECT *
+			FROM application
+			WHERE studno = ?
+			""";
+			
+			return this.applicationDAO.getApplicationBy(query, identifier);
+			
+		case 3: //by studname
+			query = """
+			SELECT *
+			FROM applicant JOIN application
+							on applicant.studno = application.studno
+			WHERE studname = ?
+			""";
+			
+			return this.applicationDAO.getApplicationBy(query, identifier);
+	
+		case 4: //by offerno
+			query = """
+			SELECT *
+			FROM application
+			WHERE offerno = ?
+			""";
+			
+			return this.applicationDAO.getApplicationBy(query, identifier);
+			
+		case 5: //by progcode
+			query = """
+			SELECT *
+			FROM application
+			WHERE offerno = ?
+			""";
+			
+			return this.applicationDAO.getApplicationBy(query, identifier);
+			
+		case 6: //by agencode
+			break;
+		case 7: //by progtype
+			break;
+		case 8: //by status
+			break;
+		case 9: //by submission date
+			break;
+		case 10: //by evaluation date range
+			break;
+		default:
+			break;
+		}
+	}
 }
+
+
+
+
+
+
+
+

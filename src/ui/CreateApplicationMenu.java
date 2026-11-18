@@ -7,15 +7,13 @@ import java.sql.*;
 
 public class CreateApplicationMenu {
 	
-	private ApplicationMenu parentMenu;
 	private Scanner sc;
 	private ApplicantService applicantService;
 	private OfferingService offeringService;
 	private ApplicationService applicationService;
 	
-	public CreateApplicationMenu(ApplicationMenu parentMenu, Scanner sc, ApplicantService applicantService,
+	public CreateApplicationMenu(Scanner sc, ApplicantService applicantService,
 			OfferingService offeringService, ApplicationService applicationService) {
-		this.parentMenu = parentMenu;
 		this.sc = sc;
 		this.applicantService = applicantService;
 		this.offeringService = offeringService;
