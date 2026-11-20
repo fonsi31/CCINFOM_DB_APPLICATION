@@ -5,7 +5,7 @@
 -- UNIQUE KEY syntax. No CREATE INDEX or ALTER TABLE ADD INDEX workaround is used.
 -- G08_scholapp; MySQL 8.0.16+ / InnoDB / strict SQL mode.
 -- Two years of actual simulated activity: 2024-2025; snapshot 2025-12-31.
--- Refined schema adds COLLEGE, AGENCY, PROGRAM_TYPE, PROGRAM_DOCUMENT, and subtype tables; original activity preserved.
+-- Same six tables / 63 columns / 1,394 seeded records as the preceding version.
 -- All identities, program offerings, criteria, documents, and decisions simulated.
 -- Agency names do not make these official CHED/DOST/DA/DOH programs or policies.
 -- example.org contacts; NULL mobile values; no real documents or credentials.
@@ -14,7 +14,7 @@
 -- Planned intake/coverage may extend to 2026; no actual activity extends there.
 -- PR008 is currently inactive; earlier offerings and valid actions are retained.
 -- Current saved states/results are not a full historical event or policy trail.
--- Reference and subtype tables are included in this refined schema.
+-- No lookup/subtype tables preimplement the intended student improvements.
 -- College/agency descriptions remain repeated for student 3NF restructuring.
 -- Fresh creation only; not migration. No DROP. Stop on the first error; no --force.
 -- Existing tables cause errors. MySQL DDL is not transactional; seed INSERTs are.
@@ -29,19 +29,6 @@ SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ONLY_FULL_GROUP_BY,ERROR_FOR_DIVISIO
 CREATE DATABASE IF NOT EXISTS G08_scholapp;
 USE G08_scholapp;
 
-CREATE TABLE college (
- collcode VARCHAR(8) NOT NULL PRIMARY KEY,
- collname VARCHAR(100) NOT NULL
-) ENGINE=InnoDB;
-
-INSERT INTO college (collcode, collname) VALUES
-('CIT','College of Information Technology'),
-('CEN','College of Engineering'),
-('CAS','College of Arts and Sciences'),
-('CAG','College of Agriculture'),
-('CHS','College of Health Sciences'),
-('CED','College of Education');
-
 CREATE TABLE applicant (
  studno VARCHAR(12) NOT NULL PRIMARY KEY,
  fullname VARCHAR(100) NOT NULL,
@@ -49,72 +36,9 @@ CREATE TABLE applicant (
  mobile VARCHAR(24) NULL,
  regdate DATE NOT NULL,
  collcode VARCHAR(8) NOT NULL,
+ collname VARCHAR(100) NOT NULL,
  course VARCHAR(100) NOT NULL,
- revno INT UNSIGNED NOT NULL DEFAULT 1,
- FOREIGN KEY (collcode) REFERENCES college(collcode)
-    ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB;
-
-CREATE TABLE program_type (
- progtype VARCHAR(20) NOT NULL PRIMARY KEY
-) ENGINE=InnoDB;
-
-INSERT INTO program_type (progtype)
-VALUES ('FirstAward'), ('Renewal');
-
-CREATE TABLE agency (
- agencode VARCHAR(8) NOT NULL PRIMARY KEY,
- agenname VARCHAR(120) NOT NULL
-) ENGINE=InnoDB;
-
-INSERT INTO agency (agencode, agenname) VALUES
-('CHED','Commission on Higher Education'),
-('DOST','Department of Science and Technology'),
-('DA','Department of Agriculture'),
-('DOH','Department of Health');
-
-CREATE TABLE program (
- progcode VARCHAR(12) NOT NULL PRIMARY KEY,
- progname VARCHAR(120) NOT NULL,
- agencode VARCHAR(8) NOT NULL,
- progtype VARCHAR(20) NOT NULL,
- active TINYINT UNSIGNED NOT NULL DEFAULT 1,
- revno INT UNSIGNED NOT NULL DEFAULT 1,
- FOREIGN KEY (agencode) REFERENCES agency(agencode)
-    ON DELETE RESTRICT ON UPDATE RESTRICT,
- FOREIGN KEY (progtype) REFERENCES program_type(progtype)
-    ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB;
-
-CREATE TABLE program_document (
- progtype VARCHAR(20) NOT NULL,
- doctype VARCHAR(20) NOT NULL,
- PRIMARY KEY (progtype, doctype),
- FOREIGN KEY (progtype) REFERENCES program_type(progtype)
-) ENGINE=InnoDB;
-
-INSERT INTO program_document (progtype, doctype) VALUES
-('FirstAward','Identity'),
-('FirstAward','Grades'),
-('FirstAward','Income'),
-('Renewal','Identity'),
-('Renewal','Grades'),
-('Renewal','Enrollment');
-
-CREATE TABLE first_award_program (
- progcode VARCHAR(12) NOT NULL PRIMARY KEY,
- entrymin DECIMAL(5,2) NOT NULL,
- incomecp DECIMAL(12,2) NOT NULL,
- FOREIGN KEY (progcode) REFERENCES program(progcode)
-    ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB;
-
-CREATE TABLE renewal_program (
- progcode VARCHAR(12) NOT NULL PRIMARY KEY,
- minunits SMALLINT UNSIGNED NOT NULL,
- maxgpa DECIMAL(4,2) NOT NULL,
- FOREIGN KEY (progcode) REFERENCES program(progcode)
-    ON DELETE RESTRICT ON UPDATE RESTRICT
+ revno INT UNSIGNED NOT NULL DEFAULT 1
 ) ENGINE=InnoDB;
 
 CREATE TABLE program (
@@ -239,163 +163,151 @@ CREATE TABLE renewcheck (
 START TRANSACTION;
 
 -- applicant: 132 simulated records.
-INSERT INTO `applicant` (`studno`, `fullname`, `email`, `mobile`, `regdate`, `collcode`, `course`, `revno`) VALUES
-('2024-0001', 'Althea Santos', 'applicant001@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0002', 'Miguel Santos', 'applicant002@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0003', 'Danica Santos', 'applicant003@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0004', 'Rafael Santos', 'applicant004@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0005', 'Camille Santos', 'applicant005@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0006', 'Joshua Santos', 'applicant006@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0007', 'Bianca Santos', 'applicant007@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0008', 'Gabriel Santos', 'applicant008@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0009', 'Mariel Santos', 'applicant009@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0010', 'Paolo Santos', 'applicant010@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0011', 'Janelle Santos', 'applicant011@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0012', 'Adrian Santos', 'applicant012@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0013', 'Clarisse Santos', 'applicant013@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0014', 'Nico Santos', 'applicant014@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0015', 'Isabel Santos', 'applicant015@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0016', 'Enzo Santos', 'applicant016@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0017', 'Althea Reyes', 'applicant017@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0018', 'Miguel Reyes', 'applicant018@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0019', 'Danica Reyes', 'applicant019@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0020', 'Rafael Reyes', 'applicant020@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0021', 'Camille Reyes', 'applicant021@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0022', 'Joshua Reyes', 'applicant022@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0023', 'Bianca Reyes', 'applicant023@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0024', 'Gabriel Reyes', 'applicant024@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0025', 'Mariel Reyes', 'applicant025@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0026', 'Paolo Reyes', 'applicant026@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0027', 'Janelle Reyes', 'applicant027@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0028', 'Adrian Reyes', 'applicant028@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0029', 'Clarisse Reyes', 'applicant029@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0030', 'Nico Reyes', 'applicant030@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0031', 'Isabel Reyes', 'applicant031@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0032', 'Enzo Reyes', 'applicant032@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0033', 'Althea Dela Cruz', 'applicant033@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0034', 'Miguel Dela Cruz', 'applicant034@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0035', 'Danica Dela Cruz', 'applicant035@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0036', 'Rafael Dela Cruz', 'applicant036@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0037', 'Camille Dela Cruz', 'applicant037@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0038', 'Joshua Dela Cruz', 'applicant038@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0039', 'Bianca Dela Cruz', 'applicant039@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0040', 'Gabriel Dela Cruz', 'applicant040@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0041', 'Mariel Dela Cruz', 'applicant041@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0042', 'Paolo Dela Cruz', 'applicant042@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0043', 'Janelle Dela Cruz', 'applicant043@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0044', 'Adrian Dela Cruz', 'applicant044@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0045', 'Clarisse Dela Cruz', 'applicant045@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0046', 'Nico Dela Cruz', 'applicant046@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0047', 'Isabel Dela Cruz', 'applicant047@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0048', 'Enzo Dela Cruz', 'applicant048@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0049', 'Althea Mendoza', 'applicant049@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0050', 'Miguel Mendoza', 'applicant050@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0051', 'Danica Mendoza', 'applicant051@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0052', 'Rafael Mendoza', 'applicant052@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0053', 'Camille Mendoza', 'applicant053@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0054', 'Joshua Mendoza', 'applicant054@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2024-0055', 'Bianca Mendoza', 'applicant055@example.org', NULL, '2024-01-01', 'CIT', 'BS Information Systems', 1),
-('2024-0056', 'Gabriel Mendoza', 'applicant056@example.org', NULL, '2024-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2024-0057', 'Mariel Mendoza', 'applicant057@example.org', NULL, '2024-01-01', 'CAS', 'BS Biology', 1),
-('2024-0058', 'Paolo Mendoza', 'applicant058@example.org', NULL, '2024-01-01', 'CAG', 'BS Agriculture', 1),
-('2024-0059', 'Janelle Mendoza', 'applicant059@example.org', NULL, '2024-01-01', 'CHS', 'BS Nursing', 1),
-('2024-0060', 'Adrian Mendoza', 'applicant060@example.org', NULL, '2024-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0001', 'Clarisse Mendoza', 'applicant061@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0002', 'Nico Mendoza', 'applicant062@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0003', 'Isabel Mendoza', 'applicant063@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0004', 'Enzo Mendoza', 'applicant064@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0005', 'Althea Ramos', 'applicant065@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0006', 'Miguel Ramos', 'applicant066@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0007', 'Danica Ramos', 'applicant067@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0008', 'Rafael Ramos', 'applicant068@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0009', 'Camille Ramos', 'applicant069@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0010', 'Joshua Ramos', 'applicant070@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0011', 'Bianca Ramos', 'applicant071@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0012', 'Gabriel Ramos', 'applicant072@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0013', 'Mariel Ramos', 'applicant073@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0014', 'Paolo Ramos', 'applicant074@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0015', 'Janelle Ramos', 'applicant075@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0016', 'Adrian Ramos', 'applicant076@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0017', 'Clarisse Ramos', 'applicant077@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0018', 'Nico Ramos', 'applicant078@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0019', 'Isabel Ramos', 'applicant079@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0020', 'Enzo Ramos', 'applicant080@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0021', 'Althea Garcia', 'applicant081@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0022', 'Miguel Garcia', 'applicant082@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0023', 'Danica Garcia', 'applicant083@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0024', 'Rafael Garcia', 'applicant084@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0025', 'Camille Garcia', 'applicant085@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0026', 'Joshua Garcia', 'applicant086@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0027', 'Bianca Garcia', 'applicant087@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0028', 'Gabriel Garcia', 'applicant088@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0029', 'Mariel Garcia', 'applicant089@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0030', 'Paolo Garcia', 'applicant090@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0031', 'Janelle Garcia', 'applicant091@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0032', 'Adrian Garcia', 'applicant092@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0033', 'Clarisse Garcia', 'applicant093@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0034', 'Nico Garcia', 'applicant094@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0035', 'Isabel Garcia', 'applicant095@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0036', 'Enzo Garcia', 'applicant096@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0037', 'Althea Bautista', 'applicant097@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0038', 'Miguel Bautista', 'applicant098@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0039', 'Danica Bautista', 'applicant099@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0040', 'Rafael Bautista', 'applicant100@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1);
-INSERT INTO `applicant` (`studno`, `fullname`, `email`, `mobile`, `regdate`, `collcode`, `course`, `revno`) VALUES
-('2025-0041', 'Camille Bautista', 'applicant101@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0042', 'Joshua Bautista', 'applicant102@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0043', 'Bianca Bautista', 'applicant103@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0044', 'Gabriel Bautista', 'applicant104@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0045', 'Mariel Bautista', 'applicant105@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0046', 'Paolo Bautista', 'applicant106@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0047', 'Janelle Bautista', 'applicant107@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0048', 'Adrian Bautista', 'applicant108@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0049', 'Clarisse Bautista', 'applicant109@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0050', 'Nico Bautista', 'applicant110@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0051', 'Isabel Bautista', 'applicant111@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0052', 'Enzo Bautista', 'applicant112@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0053', 'Althea Torres', 'applicant113@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0054', 'Miguel Torres', 'applicant114@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0055', 'Danica Torres', 'applicant115@example.org', NULL, '2025-01-01', 'CIT', 'BS Information Systems', 1),
-('2025-0056', 'Rafael Torres', 'applicant116@example.org', NULL, '2025-01-01', 'CEN', 'BS Civil Engineering', 1),
-('2025-0057', 'Camille Torres', 'applicant117@example.org', NULL, '2025-01-01', 'CAS', 'BS Biology', 1),
-('2025-0058', 'Joshua Torres', 'applicant118@example.org', NULL, '2025-01-01', 'CAG', 'BS Agriculture', 1),
-('2025-0059', 'Bianca Torres', 'applicant119@example.org', NULL, '2025-01-01', 'CHS', 'BS Nursing', 1),
-('2025-0060', 'Gabriel Torres', 'applicant120@example.org', NULL, '2025-01-01', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0061', 'Althea Castillo', 'newapplicant01@example.org', NULL, '2025-12-20', 'CIT', 'BS Information Systems', 1),
-('2025-0062', 'Miguel Castillo', 'newapplicant02@example.org', NULL, '2025-12-21', 'CEN', 'BS Civil Engineering', 1),
-('2025-0063', 'Danica Castillo', 'newapplicant03@example.org', NULL, '2025-12-22', 'CAS', 'BS Biology', 1),
-('2025-0064', 'Rafael Castillo', 'newapplicant04@example.org', NULL, '2025-12-23', 'CAG', 'BS Agriculture', 1),
-('2025-0065', 'Camille Castillo', 'newapplicant05@example.org', NULL, '2025-12-24', 'CHS', 'BS Nursing', 1),
-('2025-0066', 'Joshua Castillo', 'newapplicant06@example.org', NULL, '2025-12-25', 'CED', 'Bachelor of Secondary Education', 1),
-('2025-0067', 'Bianca Castillo', 'newapplicant07@example.org', NULL, '2025-12-26', 'CIT', 'BS Information Systems', 1),
-('2025-0068', 'Gabriel Castillo', 'newapplicant08@example.org', NULL, '2025-12-27', 'CEN', 'BS Civil Engineering', 1),
-('2025-0069', 'Mariel Castillo', 'newapplicant09@example.org', NULL, '2025-12-28', 'CAS', 'BS Biology', 1),
-('2025-0070', 'Paolo Castillo', 'newapplicant10@example.org', NULL, '2025-12-29', 'CAG', 'BS Agriculture', 1),
-('2025-0071', 'Janelle Castillo', 'newapplicant11@example.org', NULL, '2025-12-30', 'CHS', 'BS Nursing', 1),
-('2025-0072', 'Adrian Castillo', 'newapplicant12@example.org', NULL, '2025-12-31', 'CED', 'Bachelor of Secondary Education', 1);
+INSERT INTO `applicant` (`studno`, `fullname`, `email`, `mobile`, `regdate`, `collcode`, `collname`, `course`, `revno`) VALUES
+('2024-0001', 'Althea Santos', 'applicant001@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0002', 'Miguel Santos', 'applicant002@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0003', 'Danica Santos', 'applicant003@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0004', 'Rafael Santos', 'applicant004@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0005', 'Camille Santos', 'applicant005@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0006', 'Joshua Santos', 'applicant006@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0007', 'Bianca Santos', 'applicant007@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0008', 'Gabriel Santos', 'applicant008@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0009', 'Mariel Santos', 'applicant009@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0010', 'Paolo Santos', 'applicant010@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0011', 'Janelle Santos', 'applicant011@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0012', 'Adrian Santos', 'applicant012@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0013', 'Clarisse Santos', 'applicant013@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0014', 'Nico Santos', 'applicant014@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0015', 'Isabel Santos', 'applicant015@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0016', 'Enzo Santos', 'applicant016@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0017', 'Althea Reyes', 'applicant017@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0018', 'Miguel Reyes', 'applicant018@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0019', 'Danica Reyes', 'applicant019@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0020', 'Rafael Reyes', 'applicant020@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0021', 'Camille Reyes', 'applicant021@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0022', 'Joshua Reyes', 'applicant022@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0023', 'Bianca Reyes', 'applicant023@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0024', 'Gabriel Reyes', 'applicant024@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0025', 'Mariel Reyes', 'applicant025@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0026', 'Paolo Reyes', 'applicant026@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0027', 'Janelle Reyes', 'applicant027@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0028', 'Adrian Reyes', 'applicant028@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0029', 'Clarisse Reyes', 'applicant029@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0030', 'Nico Reyes', 'applicant030@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0031', 'Isabel Reyes', 'applicant031@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0032', 'Enzo Reyes', 'applicant032@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0033', 'Althea Dela Cruz', 'applicant033@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0034', 'Miguel Dela Cruz', 'applicant034@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0035', 'Danica Dela Cruz', 'applicant035@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0036', 'Rafael Dela Cruz', 'applicant036@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0037', 'Camille Dela Cruz', 'applicant037@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0038', 'Joshua Dela Cruz', 'applicant038@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0039', 'Bianca Dela Cruz', 'applicant039@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0040', 'Gabriel Dela Cruz', 'applicant040@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0041', 'Mariel Dela Cruz', 'applicant041@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0042', 'Paolo Dela Cruz', 'applicant042@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0043', 'Janelle Dela Cruz', 'applicant043@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0044', 'Adrian Dela Cruz', 'applicant044@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0045', 'Clarisse Dela Cruz', 'applicant045@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0046', 'Nico Dela Cruz', 'applicant046@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0047', 'Isabel Dela Cruz', 'applicant047@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0048', 'Enzo Dela Cruz', 'applicant048@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0049', 'Althea Mendoza', 'applicant049@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0050', 'Miguel Mendoza', 'applicant050@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0051', 'Danica Mendoza', 'applicant051@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0052', 'Rafael Mendoza', 'applicant052@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0053', 'Camille Mendoza', 'applicant053@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0054', 'Joshua Mendoza', 'applicant054@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2024-0055', 'Bianca Mendoza', 'applicant055@example.org', NULL, '2024-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2024-0056', 'Gabriel Mendoza', 'applicant056@example.org', NULL, '2024-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2024-0057', 'Mariel Mendoza', 'applicant057@example.org', NULL, '2024-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2024-0058', 'Paolo Mendoza', 'applicant058@example.org', NULL, '2024-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2024-0059', 'Janelle Mendoza', 'applicant059@example.org', NULL, '2024-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2024-0060', 'Adrian Mendoza', 'applicant060@example.org', NULL, '2024-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0001', 'Clarisse Mendoza', 'applicant061@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0002', 'Nico Mendoza', 'applicant062@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0003', 'Isabel Mendoza', 'applicant063@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0004', 'Enzo Mendoza', 'applicant064@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0005', 'Althea Ramos', 'applicant065@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0006', 'Miguel Ramos', 'applicant066@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0007', 'Danica Ramos', 'applicant067@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0008', 'Rafael Ramos', 'applicant068@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0009', 'Camille Ramos', 'applicant069@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0010', 'Joshua Ramos', 'applicant070@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0011', 'Bianca Ramos', 'applicant071@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0012', 'Gabriel Ramos', 'applicant072@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0013', 'Mariel Ramos', 'applicant073@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0014', 'Paolo Ramos', 'applicant074@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0015', 'Janelle Ramos', 'applicant075@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0016', 'Adrian Ramos', 'applicant076@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0017', 'Clarisse Ramos', 'applicant077@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0018', 'Nico Ramos', 'applicant078@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0019', 'Isabel Ramos', 'applicant079@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0020', 'Enzo Ramos', 'applicant080@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0021', 'Althea Garcia', 'applicant081@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0022', 'Miguel Garcia', 'applicant082@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0023', 'Danica Garcia', 'applicant083@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0024', 'Rafael Garcia', 'applicant084@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0025', 'Camille Garcia', 'applicant085@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0026', 'Joshua Garcia', 'applicant086@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0027', 'Bianca Garcia', 'applicant087@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0028', 'Gabriel Garcia', 'applicant088@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0029', 'Mariel Garcia', 'applicant089@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0030', 'Paolo Garcia', 'applicant090@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0031', 'Janelle Garcia', 'applicant091@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0032', 'Adrian Garcia', 'applicant092@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0033', 'Clarisse Garcia', 'applicant093@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0034', 'Nico Garcia', 'applicant094@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0035', 'Isabel Garcia', 'applicant095@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0036', 'Enzo Garcia', 'applicant096@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0037', 'Althea Bautista', 'applicant097@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0038', 'Miguel Bautista', 'applicant098@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0039', 'Danica Bautista', 'applicant099@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0040', 'Rafael Bautista', 'applicant100@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1);
+INSERT INTO `applicant` (`studno`, `fullname`, `email`, `mobile`, `regdate`, `collcode`, `collname`, `course`, `revno`) VALUES
+('2025-0041', 'Camille Bautista', 'applicant101@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0042', 'Joshua Bautista', 'applicant102@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0043', 'Bianca Bautista', 'applicant103@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0044', 'Gabriel Bautista', 'applicant104@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0045', 'Mariel Bautista', 'applicant105@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0046', 'Paolo Bautista', 'applicant106@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0047', 'Janelle Bautista', 'applicant107@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0048', 'Adrian Bautista', 'applicant108@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0049', 'Clarisse Bautista', 'applicant109@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0050', 'Nico Bautista', 'applicant110@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0051', 'Isabel Bautista', 'applicant111@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0052', 'Enzo Bautista', 'applicant112@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0053', 'Althea Torres', 'applicant113@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0054', 'Miguel Torres', 'applicant114@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0055', 'Danica Torres', 'applicant115@example.org', NULL, '2025-01-01', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0056', 'Rafael Torres', 'applicant116@example.org', NULL, '2025-01-01', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0057', 'Camille Torres', 'applicant117@example.org', NULL, '2025-01-01', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0058', 'Joshua Torres', 'applicant118@example.org', NULL, '2025-01-01', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0059', 'Bianca Torres', 'applicant119@example.org', NULL, '2025-01-01', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0060', 'Gabriel Torres', 'applicant120@example.org', NULL, '2025-01-01', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0061', 'Althea Castillo', 'newapplicant01@example.org', NULL, '2025-12-20', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0062', 'Miguel Castillo', 'newapplicant02@example.org', NULL, '2025-12-21', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0063', 'Danica Castillo', 'newapplicant03@example.org', NULL, '2025-12-22', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0064', 'Rafael Castillo', 'newapplicant04@example.org', NULL, '2025-12-23', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0065', 'Camille Castillo', 'newapplicant05@example.org', NULL, '2025-12-24', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0066', 'Joshua Castillo', 'newapplicant06@example.org', NULL, '2025-12-25', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1),
+('2025-0067', 'Bianca Castillo', 'newapplicant07@example.org', NULL, '2025-12-26', 'CIT', 'College of Information Technology', 'BS Information Systems', 1),
+('2025-0068', 'Gabriel Castillo', 'newapplicant08@example.org', NULL, '2025-12-27', 'CEN', 'College of Engineering', 'BS Civil Engineering', 1),
+('2025-0069', 'Mariel Castillo', 'newapplicant09@example.org', NULL, '2025-12-28', 'CAS', 'College of Arts and Sciences', 'BS Biology', 1),
+('2025-0070', 'Paolo Castillo', 'newapplicant10@example.org', NULL, '2025-12-29', 'CAG', 'College of Agriculture', 'BS Agriculture', 1),
+('2025-0071', 'Janelle Castillo', 'newapplicant11@example.org', NULL, '2025-12-30', 'CHS', 'College of Health Sciences', 'BS Nursing', 1),
+('2025-0072', 'Adrian Castillo', 'newapplicant12@example.org', NULL, '2025-12-31', 'CED', 'College of Education', 'Bachelor of Secondary Education', 1);
 
 -- program: 8 simulated records.
-INSERT INTO `program` (`progcode`, `progname`, `agencode`, `progtype`, `active`, `revno`) VALUES
-('PR001', 'Simulated CHED Initial Scholarship Stream', 'CHED', 'FirstAward', 1, 1),
-('PR002', 'Simulated CHED Scholarship Renewal Stream', 'CHED', 'Renewal', 1, 1),
-('PR003', 'Simulated DOST Initial Scholarship Stream', 'DOST', 'FirstAward', 1, 1),
-('PR004', 'Simulated DOST Scholarship Renewal Stream', 'DOST', 'Renewal', 1, 1),
-('PR005', 'Simulated DA Initial Scholarship Stream', 'DA', 'FirstAward', 1, 1),
-('PR006', 'Simulated DA Scholarship Renewal Stream', 'DA', 'Renewal', 1, 1),
-('PR007', 'Simulated DOH Initial Scholarship Stream', 'DOH', 'FirstAward', 1, 1),
-('PR008', 'Simulated DOH Scholarship Renewal Stream', 'DOH', 'Renewal', 0, 1); 
-
-INSERT INTO first_award_program (progcode, entrymin, incomecp) VALUES
-('PR001', 80, 240000),
-('PR003', 82, 300000),
-('PR005', 84, 220000),
-('PR007', 86, 280000);
-
-INSERT INTO renewal_program (progcode, minunits, maxgpa) VALUES
-('PR002', 15, 2.50),
-('PR004', 16, 2.25),
-('PR006', 17, 2.75),
-('PR008', 18, 2.50);
+INSERT INTO `program` (`progcode`, `progname`, `agencode`, `agenname`, `progtype`, `entrymin`, `incomecp`, `minunits`, `maxgpa`, `active`, `revno`) VALUES
+('PR001', 'Simulated CHED Initial Scholarship Stream', 'CHED', 'Commission on Higher Education', 'FirstAward', 80, 240000, NULL, NULL, 1, 1),
+('PR002', 'Simulated CHED Scholarship Renewal Stream', 'CHED', 'Commission on Higher Education', 'Renewal', NULL, NULL, 15, 2.50, 1, 1),
+('PR003', 'Simulated DOST Initial Scholarship Stream', 'DOST', 'Department of Science and Technology', 'FirstAward', 82, 300000, NULL, NULL, 1, 1),
+('PR004', 'Simulated DOST Scholarship Renewal Stream', 'DOST', 'Department of Science and Technology', 'Renewal', NULL, NULL, 16, 2.25, 1, 1),
+('PR005', 'Simulated DA Initial Scholarship Stream', 'DA', 'Department of Agriculture', 'FirstAward', 84, 220000, NULL, NULL, 1, 1),
+('PR006', 'Simulated DA Scholarship Renewal Stream', 'DA', 'Department of Agriculture', 'Renewal', NULL, NULL, 17, 2.75, 1, 1),
+('PR007', 'Simulated DOH Initial Scholarship Stream', 'DOH', 'Department of Health', 'FirstAward', 86, 280000, NULL, NULL, 1, 1),
+('PR008', 'Simulated DOH Scholarship Renewal Stream', 'DOH', 'Department of Health', 'Renewal', NULL, NULL, 18, 2.50, 0, 1);
 
 -- offering: 34 simulated records.
 INSERT INTO `offering` (`offerno`, `progcode`, `title`, `opendt`, `closedt`, `coverst`, `coverend`, `slots`, `status`, `remarks`, `revno`) VALUES

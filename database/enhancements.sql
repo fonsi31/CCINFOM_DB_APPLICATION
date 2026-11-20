@@ -72,6 +72,13 @@ insert into agency (agencode, agenname)
 select distinct agencode, agenname
 from program;
 
+-- make program.agencode reference agency.agencode
+alter table program
+add constraint fk_program_agency
+foreign key(agencode)
+references agency(agencode);
+
+
 -- create table for firstaward programs (acting as a subtable to program)
 create table first_award_program(
 	progcode varchar(12) not null primary key,
@@ -106,11 +113,8 @@ where progtype = 'Renewal';
 
 -- drop unnecessary columns from program table
 alter table program
+DROP COLUMN agenname,
 DROP COLUMN entrymin,
 DROP COLUMN incomecp,
 DROP COLUMN minunits,
 DROP COLUMN maxgpa;
-
--- forgot to add this
-alter table program
-DROP COLUMN agenname;
