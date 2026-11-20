@@ -152,14 +152,20 @@ public class ApplicationDAO {
 	}
 	
 	public ArrayList<ApplicationModel> getApplicationBy(
-			String query, String identifier) throws SQLException{
+			String query, String identifier, String from, String to, int mode) throws SQLException{
 		
 		ArrayList<ApplicationModel> applications = new ArrayList<>();
 		
 		try(Connection conn = this.dbConn.connect();
 			PreparedStatement pstmt = conn.prepareStatement(query)){
 			
-			pstmt.setString(1, identifier);
+			if(mode == 9 || mode == 10) {
+				pstmt.setString(1, from);
+				pstmt.setString(2, to);
+			}
+			else {
+				pstmt.setString(1, identifier);
+			}
 			
 			try(ResultSet rs = pstmt.executeQuery()){
 				while(rs.next()) {

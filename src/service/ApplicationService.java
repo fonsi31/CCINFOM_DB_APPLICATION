@@ -117,7 +117,7 @@ public class ApplicationService {
 	}
 	
 	public ArrayList<ApplicationModel> getApplicationBy(
-			int mode, String identifier) throws SQLException{
+			int mode, String identifier, String from, String to) throws SQLException{
 		
 		String query;
 		
@@ -129,60 +129,119 @@ public class ApplicationService {
 					SELECT *
 					FROM application
 					WHERE appno = ?
+					ORDER BY appno
 					""";
-			
-			return this.applicationDAO.getApplicationBy(query, identifier);
+			break;
 			
 		//by studno
 		case 2: 
 			query = """
-			SELECT *
-			FROM application
-			WHERE studno = ?
-			""";
-			
-			return this.applicationDAO.getApplicationBy(query, identifier);
+					SELECT *
+					FROM application
+					WHERE studno = ?
+					ORDER BY appno
+					""";
+			break;
 			
 		case 3: //by studname
 			query = """
-			SELECT *
-			FROM applicant JOIN application
-							on applicant.studno = application.studno
-			WHERE studname = ?
-			""";
+					SELECT applicant.*
+					FROM applicant JOIN application
+									on applicant.studno = application.studno
+					WHERE applicant.studname = ?
+					ORDER BY applicant.studname
+				""";
 			
-			return this.applicationDAO.getApplicationBy(query, identifier);
+			break;
 	
 		case 4: //by offerno
 			query = """
-			SELECT *
-			FROM application
-			WHERE offerno = ?
-			""";
-			
-			return this.applicationDAO.getApplicationBy(query, identifier);
+					SELECT *
+					FROM application
+					WHERE offerno = ?
+					ORDER BY appno
+					""";
+			break;
 			
 		case 5: //by progcode
 			query = """
-			SELECT *
-			FROM application
-			WHERE offerno = ?
-			""";
-			
-			return this.applicationDAO.getApplicationBy(query, identifier);
+					SELECT *
+					FROM application
+					WHERE offerno = ?
+					ORDER BY appno
+					""";
+			break;
 			
 		case 6: //by agencode
+			query = """
+					SELECT a.*
+					FROM program p join offering o
+								on p.progcode = o.progcode
+								join application a
+								on o.offerno = a.offerno
+					WHERE p.agencode = ?
+					ORDER BY a.appno
+					""";
 			break;
+			
 		case 7: //by progtype
+			query = """
+					SELECT a.*
+					FROM program p join offering o
+								on p.progcode = o.progcode
+								join application a
+								on o.offerno = a.offerno
+					WHERE p.progtype = ?
+					ORDER BY a.appno
+					""";
 			break;
+			
 		case 8: //by status
+			query = """
+					SELECT *
+					FROM application
+					WHERE status = ?
+					ORDER BY appno
+					""";
 			break;
+			
 		case 9: //by submission date
+			LocalDate start = LocalDate.parse(from);
+			LocalDate end = LocalDate.parse(to);
+			
+			if(end.isBefore(start)) {
+				throw new IllegalArgumentException("Invalid Date entry");
+			}
+			
+			query = """
+					SELECT *
+					FROM application
+					WHERE submitdt BETWEEN ? AND ?
+					ORDER BY submitdt
+					""";
 			break;
+			
 		case 10: //by evaluation date range
+			LocalDate start1 = LocalDate.parse(from);
+			LocalDate end1 = LocalDate.parse(to);
+			
+			if(end1.isBefore(start1)) {
+				throw new IllegalArgumentException("Invalid Date entry");
+			}
+			
+			query = """
+					SELECT *
+					FROM application
+					WHERE evaldate BETWEEN ? AND ?
+					ORDER BY evaldate
+					""";
+
 			break;
+			
 		default:
-			break;
+			throw new IllegalArgumentException("Invalid Search mode!");
 		}
+		
+		return this.applicationDAO.getApplicationBy(query, identifier, from, to, mode);
 	}
 }

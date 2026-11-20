@@ -9,7 +9,6 @@ public class ProgramService {
 	
 	public ProgramService(ProgramDAO programDAO) {
 		this.programDAO = programDAO;
-		this.sc = sc;
 	}
 	
 	public ProgramModel getProgByProgCode(String progcode) throws SQLException{

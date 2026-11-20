@@ -36,6 +36,7 @@ public class ApplicationMenu {
 					break;
 					
 				case 2:
+					this.searchMenu.run();
 					break;
 					
 				case 3:

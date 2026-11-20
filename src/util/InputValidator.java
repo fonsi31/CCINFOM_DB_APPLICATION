@@ -1,5 +1,7 @@
 package util;
 import java.util.Scanner;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.math.BigDecimal;
 
 public class InputValidator {
@@ -72,4 +74,18 @@ public class InputValidator {
 			return null;
 		}
 	}
+	
+	public static boolean isValidDate(String date) {
+		if(date == null) {
+			return false;
+		}
+		
+		try {
+			LocalDate.parse(date.trim());
+			return true;
+		}
+		catch(DateTimeParseException e) {
+			return false;
+		}
+	}  
 }

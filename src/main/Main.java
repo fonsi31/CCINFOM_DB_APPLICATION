@@ -25,7 +25,7 @@ public class Main {
 		//services
 		ApplicantService applicantService = new ApplicantService();
 		OfferingService offeringService = new OfferingService();
-		ProgramService programService = new ProgramService(programDAO, sc);
+		ProgramService programService = new ProgramService(programDAO);
 		ApplicationService applicationService = new ApplicationService(applicationDAO, sc, programService);
 		
 		//menus/uis (built innermost first, then passed to the menus that open them)
