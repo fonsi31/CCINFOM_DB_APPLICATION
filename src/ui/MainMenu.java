@@ -2,13 +2,21 @@ package ui;
 
 import java.util.InputMismatchException;
 import java.util.Scanner;
+import service.*;
+import util.TerminalManager;
 
 public class MainMenu {
 
     private Scanner sc;
-    
-    public MainMenu(Scanner sc) {
-    	this.sc = sc;
+	private ApplicantService applicantService;
+	private OfferingService offeringService;
+	private ApplicationService applicationService;    
+	
+    public MainMenu(Scanner sc, ApplicantService applicantService, OfferingService offeringService, ApplicationService applicationService) {
+		this.sc = sc;
+		this.applicantService = applicantService;
+		this.offeringService = offeringService;
+		this.applicationService = applicationService;
     }
 
     public void start() {
@@ -22,6 +30,7 @@ public class MainMenu {
 
 			try {
 				choice = sc.nextInt();
+				sc.nextLine();
 			} catch (InputMismatchException e){
 				sc.nextLine();
 				choice = -1;
@@ -31,13 +40,17 @@ public class MainMenu {
 				ApplicantMenu applicantMenu = new ApplicantMenu(sc);
 				applicantMenu.start();								
 			} else if (choice == 2){
-				System.out.println("Managing Programs...");
+				ProgramMenu programMenu = new ProgramMenu(sc);
+				programMenu.start();
 			} else if (choice == 3){
-				System.out.println("Managing Applications...");				
+				ApplicationMenu applicationMenu = new ApplicationMenu(this, sc, applicantService, offeringService, applicationService);
+				applicationMenu.run();			
 			} else if (choice == 4){
-				System.out.println("Managing Documents...");
+				DocumentsMenu documentsMenu = new DocumentsMenu(this, sc);
+				documentsMenu.run();
 			} else if (choice == 5){
-				System.out.println("Managing Reports...");
+				ReportsMenu reportsMenu = new ReportsMenu(this, sc);
+				reportsMenu.run();
 			} else if (choice == 0){
 				System.out.println("Exiting...");
 				running = false;
@@ -49,6 +62,7 @@ public class MainMenu {
     }
 
     public void displayMenu() {
+		TerminalManager.clearScreen();			
         System.out.println("==========================================");
         System.out.println("    SCHOLARSHIP MANAGEMENT SYSTEM         ");
         System.out.println("==========================================");

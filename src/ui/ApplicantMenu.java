@@ -2,6 +2,7 @@ package ui;
 
 import java.util.InputMismatchException;
 import java.util.Scanner;
+import util.TerminalManager;
 
 public class ApplicantMenu { 
 	private Scanner sc;
@@ -21,6 +22,7 @@ public class ApplicantMenu {
 
 			try {
 				choice = sc.nextInt();
+				sc.nextLine();
 			} catch (InputMismatchException e){
 				sc.nextLine();
 				choice = -1;
@@ -45,6 +47,7 @@ public class ApplicantMenu {
 	}
 	
 	public void manageApplicantsMenu(){
+			TerminalManager.clearScreen();
             System.out.println("Manage Applicants: ");
             System.out.println("[1] Register Applicant");
             System.out.println("[2] Search Applicants");
