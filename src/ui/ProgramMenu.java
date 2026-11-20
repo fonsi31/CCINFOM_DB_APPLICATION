@@ -6,9 +6,13 @@ import util.TerminalManager;
 
 public class ProgramMenu { 
 	private Scanner sc;
+	private OfferingMenu offeringMenu;
+	private RenewalCheckMenu renewalCheckMenu;
 	
-	public ProgramMenu(Scanner sc){
+	public ProgramMenu(Scanner sc, OfferingMenu offeringMenu, RenewalCheckMenu renewalCheckMenu){
 		this.sc = sc;
+		this.offeringMenu = offeringMenu;
+		this.renewalCheckMenu = renewalCheckMenu;
 	}
 	
 	public void start() {
@@ -66,10 +70,8 @@ public class ProgramMenu {
 			}
 
 			if (selectMenuChoice == 1){
-				OfferingMenu offeringMenu = new OfferingMenu(sc);
 				offeringMenu.start();
 			} else if (selectMenuChoice == 2){
-				RenewalCheckMenu renewalCheckMenu = new RenewalCheckMenu(sc);
 				renewalCheckMenu.start();
 			} else if (selectMenuChoice == 0){
 				selecting = false;

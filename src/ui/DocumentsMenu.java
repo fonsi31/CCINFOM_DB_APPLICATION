@@ -6,11 +6,9 @@ import service.ApplicationService;
 
 public class DocumentsMenu {
 	
-	private MainMenu parentMenu;
 	private Scanner sc;
 	
-	public DocumentsMenu(MainMenu parentMenu, Scanner sc) {
-		this.parentMenu = parentMenu;
+	public DocumentsMenu(Scanner sc) {
 		this.sc = sc;
 	}
 	

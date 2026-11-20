@@ -6,9 +6,8 @@ import java.sql.*;
 
 public class ProgramService {
 	private ProgramDAO programDAO;
-	private Scanner sc;
 	
-	public ProgramService(ProgramDAO programDAO, Scanner sc) {
+	public ProgramService(ProgramDAO programDAO) {
 		this.programDAO = programDAO;
 		this.sc = sc;
 	}

@@ -1,21 +1,16 @@
 package ui;
 import java.util.Scanner;
-import service.*;
 import util.*;
 
 public class ApplicationMenu {
 	private Scanner sc;
 	private CreateApplicationMenu createMenu;
 	private ApplicationSearchMenu searchMenu;
-	private ApplicantService applicantService;
-	private OfferingService offeringService;
-	private ApplicationService applicationService;
 	
-	public ApplicationMenu(Scanner sc, ApplicantService applicantService,
-			OfferingService offeringService, ApplicationService applicationService) {
+	public ApplicationMenu(Scanner sc, CreateApplicationMenu createMenu, ApplicationSearchMenu searchMenu) {
 		this.sc = sc;
-		this.createMenu = new CreateApplicationMenu(sc, applicantService,
-													offeringService, applicationService);
+		this.createMenu = createMenu;
+		this.searchMenu = searchMenu;
 	}
 	
 	public void run() {  

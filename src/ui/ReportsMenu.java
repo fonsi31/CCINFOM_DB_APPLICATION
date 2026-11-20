@@ -5,11 +5,9 @@ import util.TerminalManager;
 
 public class ReportsMenu {
 	
-	private MainMenu parentMenu;
 	private Scanner sc;
 	
-	public ReportsMenu(MainMenu parentMenu, Scanner sc) {
-		this.parentMenu = parentMenu;
+	public ReportsMenu(Scanner sc) {
 		this.sc = sc;
 	}
 	

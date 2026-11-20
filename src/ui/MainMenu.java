@@ -2,21 +2,25 @@ package ui;
 
 import java.util.InputMismatchException;
 import java.util.Scanner;
-import service.*;
 import util.TerminalManager;
 
 public class MainMenu {
 
     private Scanner sc;
-	private ApplicantService applicantService;
-	private OfferingService offeringService;
-	private ApplicationService applicationService;    
+	private ApplicantMenu applicantMenu;
+	private ProgramMenu programMenu;
+	private ApplicationMenu applicationMenu;
+	private DocumentsMenu documentsMenu;
+	private ReportsMenu reportsMenu;
 	
-    public MainMenu(Scanner sc, ApplicantService applicantService, OfferingService offeringService, ApplicationService applicationService) {
+    public MainMenu(Scanner sc, ApplicantMenu applicantMenu, ProgramMenu programMenu,
+    		ApplicationMenu applicationMenu, DocumentsMenu documentsMenu, ReportsMenu reportsMenu) {
 		this.sc = sc;
-		this.applicantService = applicantService;
-		this.offeringService = offeringService;
-		this.applicationService = applicationService;
+		this.applicantMenu = applicantMenu;
+		this.programMenu = programMenu;
+		this.applicationMenu = applicationMenu;
+		this.documentsMenu = documentsMenu;
+		this.reportsMenu = reportsMenu;
     }
 
     public void start() {
@@ -37,19 +41,14 @@ public class MainMenu {
 			}
 			
 			if (choice == 1){
-				ApplicantMenu applicantMenu = new ApplicantMenu(sc);
 				applicantMenu.start();								
 			} else if (choice == 2){
-				ProgramMenu programMenu = new ProgramMenu(sc);
 				programMenu.start();
 			} else if (choice == 3){
-				ApplicationMenu applicationMenu = new ApplicationMenu(this, sc, applicantService, offeringService, applicationService);
 				applicationMenu.run();			
 			} else if (choice == 4){
-				DocumentsMenu documentsMenu = new DocumentsMenu(this, sc);
 				documentsMenu.run();
 			} else if (choice == 5){
-				ReportsMenu reportsMenu = new ReportsMenu(this, sc);
 				reportsMenu.run();
 			} else if (choice == 0){
 				System.out.println("Exiting...");
