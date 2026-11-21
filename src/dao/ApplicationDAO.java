@@ -159,11 +159,11 @@ public class ApplicationDAO {
 		try(Connection conn = this.dbConn.connect();
 			PreparedStatement pstmt = conn.prepareStatement(query)){
 			
-			if(mode == 9 || mode == 10) {
+			if(mode == 9 || mode == 10) { //search filter is by date
 				pstmt.setString(1, from);
 				pstmt.setString(2, to);
 			}
-			else {
+			else { //search filter is by a table identifier
 				pstmt.setString(1, identifier);
 			}
 			

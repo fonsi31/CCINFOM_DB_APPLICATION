@@ -1,5 +1,6 @@
 package service;
 import java.util.ArrayList;
+
 import enums.*;
 import java.time.LocalDate;
 import dao.*;
@@ -116,7 +117,7 @@ public class ApplicationService {
 		return "AP" + currentYear + formattedSeq;
 	}
 	
-	public ArrayList<ApplicationModel> getApplicationBy(
+	public ArrayList<ApplicationModel> getApplicationsBy(
 			int mode, String identifier, String from, String to) throws SQLException{
 		
 		String query;
