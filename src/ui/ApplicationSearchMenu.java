@@ -67,7 +67,6 @@ public class ApplicationSearchMenu {
 			else { //choice >=1 && choice <= 10
 				System.out.print("Enter search identifier: ");
 				identifier = this.sc.nextLine();
-				identifier = identifier.trim();
 			}
 			
 			try {
@@ -80,7 +79,7 @@ public class ApplicationSearchMenu {
 				e.printStackTrace();
 			}
 			
-			this.displayApplications(applications);
+			ApplicationMenu.displayApplications(applications);
 			System.out.println();
 			TerminalManager.pause(sc);
 		}
@@ -99,22 +98,5 @@ public class ApplicationSearchMenu {
 		System.out.println("[9] submission date (yyyy-mm-dd)");
 		System.out.println("[10] evaluation date (yyyy-mm-dd)");
 		System.out.println("[11] back");  
-	}
-	
-	public void displayApplications(ArrayList<ApplicationModel> applications) {
-		if(applications.isEmpty()) {
-			System.out.print("No applications found");
-			return;
-		}
-		
-		int i = 1;
-		
-		for (ApplicationModel application: applications) {
-			System.out.print(i + ". Application Number: " + application.getAppno());
-			System.out.println("   Student Number: " + application.getStudno());
-			System.out.println("   Submitted at: " + application.getSubmitdt().toString());
-			System.out.println("   Status: " + application.getStatus());
-			i++;
-		}
 	}
 }

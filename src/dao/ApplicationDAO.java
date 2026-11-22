@@ -10,6 +10,17 @@ import java.time.LocalDate;
 
 public class ApplicationDAO {
 	
+	//common SELECT for application searches
+	//a = application, ap = applicant, o = offering, p = program
+	//only the application's columns (a.*) are returned, so column names are never ambiguous
+	public static final String BASE_SELECT = """
+			SELECT a.*
+			FROM application a
+			JOIN applicant ap ON ap.studno  = a.studno
+			JOIN offering  o  ON o.offerno  = a.offerno
+			JOIN program   p  ON p.progcode = o.progcode
+			""";
+	
 	private DBConnection dbConn;
 	
 	public ApplicationDAO(DBConnection dbConn) {
@@ -151,7 +162,7 @@ public class ApplicationDAO {
 	    return applications;
 	}
 	
-	public ArrayList<ApplicationModel> getApplicationBy(
+	public ArrayList<ApplicationModel> getApplicationsBy(
 			String query, String identifier, String from, String to, int mode) throws SQLException{
 		
 		ArrayList<ApplicationModel> applications = new ArrayList<>();

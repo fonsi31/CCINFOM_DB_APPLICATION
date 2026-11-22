@@ -1,6 +1,6 @@
 package service;
-import java.util.ArrayList;
 
+import java.util.ArrayList;
 import enums.*;
 import java.time.LocalDate;
 import dao.*;
@@ -122,127 +122,123 @@ public class ApplicationService {
 		
 		String query;
 		
+		//modes 9 and 10 search by date range and don't use identifier
+		if(mode != 9 && mode != 10) {
+			if(identifier == null || identifier.trim().isEmpty()) {
+				throw new IllegalArgumentException("Search value cannot be empty");
+			}
+			identifier = identifier.trim();
+		}
+		
 		switch(mode) {
 		
-		//by appno
-		case 1: 
-			query = """
-					SELECT *
-					FROM application
-					WHERE appno = ?
-					ORDER BY appno
+		case 1: //by appno
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE a.appno = ?
+					ORDER BY a.appno
 					""";
 			break;
 			
-		//by studno
-		case 2: 
-			query = """
-					SELECT *
-					FROM application
-					WHERE studno = ?
-					ORDER BY appno
+		case 2: //by studno
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE a.studno = ?
+					ORDER BY a.appno
 					""";
 			break;
 			
-		case 3: //by studname
-			query = """
-					SELECT applicant.*
-					FROM applicant JOIN application
-									on applicant.studno = application.studno
-					WHERE applicant.studname = ?
-					ORDER BY applicant.studname
-				""";
-			
+		case 3: //by applicant name (partial match)
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE ap.fullname LIKE ?
+					ORDER BY ap.fullname, a.appno
+					""";
+			identifier = "%" + identifier + "%";
 			break;
 	
 		case 4: //by offerno
-			query = """
-					SELECT *
-					FROM application
-					WHERE offerno = ?
-					ORDER BY appno
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE a.offerno = ?
+					ORDER BY a.appno
 					""";
 			break;
 			
 		case 5: //by progcode
-			query = """
-					SELECT *
-					FROM application
-					WHERE offerno = ?
-					ORDER BY appno
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE p.progcode = ?
+					ORDER BY a.appno
 					""";
 			break;
 			
 		case 6: //by agencode
-			query = """
-					SELECT a.*
-					FROM program p join offering o
-								on p.progcode = o.progcode
-								join application a
-								on o.offerno = a.offerno
+			query = ApplicationDAO.BASE_SELECT + """
 					WHERE p.agencode = ?
 					ORDER BY a.appno
 					""";
 			break;
 			
-		case 7: //by progtype
-			query = """
-					SELECT a.*
-					FROM program p join offering o
-								on p.progcode = o.progcode
-								join application a
-								on o.offerno = a.offerno
+		case 7: //by progtype (accepts "First Award", "FirstAward", "Renewal")
+			ProgramType progtype = ProgramType.fromDatabaseValue(identifier.replace(" ", ""));
+			identifier = progtype.toDatabaseValue();
+			
+			query = ApplicationDAO.BASE_SELECT + """
 					WHERE p.progtype = ?
 					ORDER BY a.appno
 					""";
 			break;
 			
 		case 8: //by status
-			query = """
-					SELECT *
-					FROM application
-					WHERE status = ?
-					ORDER BY appno
+			ApplicationStatus status = ApplicationStatus.fromDatabaseValue(identifier);
+			identifier = status.toDatabaseValue();
+			
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE a.status = ?
+					ORDER BY a.appno
 					""";
 			break;
 			
-		case 9: //by submission date
-			LocalDate start = LocalDate.parse(from);
-			LocalDate end = LocalDate.parse(to);
+		case 9: //by submission date range
+			validateDateRange(from, to);
+			from = from.trim();
+			to = to.trim();
 			
-			if(end.isBefore(start)) {
-				throw new IllegalArgumentException("Invalid Date entry");
-			}
-			
-			query = """
-					SELECT *
-					FROM application
-					WHERE submitdt BETWEEN ? AND ?
-					ORDER BY submitdt
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE a.submitdt BETWEEN ? AND ?
+					ORDER BY a.submitdt, a.appno
 					""";
 			break;
 			
 		case 10: //by evaluation date range
-			LocalDate start1 = LocalDate.parse(from);
-			LocalDate end1 = LocalDate.parse(to);
+			validateDateRange(from, to);
+			from = from.trim();
+			to = to.trim();
 			
-			if(end1.isBefore(start1)) {
-				throw new IllegalArgumentException("Invalid Date entry");
-			}
-			
-			query = """
-					SELECT *
-					FROM application
-					WHERE evaldate BETWEEN ? AND ?
-					ORDER BY evaldate
+			query = ApplicationDAO.BASE_SELECT + """
+					WHERE a.evaldate BETWEEN ? AND ?
+					ORDER BY a.evaldate, a.appno
 					""";
-
 			break;
 			
 		default:
 			throw new IllegalArgumentException("Invalid Search mode!");
 		}
 		
-		return this.applicationDAO.getApplicationBy(query, identifier, from, to, mode);
+		return this.applicationDAO.getApplicationsBy(query, identifier, from, to, mode);
+	}
+	
+	//checks that both dates are valid yyyy-MM-dd and the end is not before the start
+	private void validateDateRange(String from, String to) {
+		LocalDate start;
+		LocalDate end;
+		
+		try {
+			start = LocalDate.parse(from.trim());
+			end = LocalDate.parse(to.trim());
+		}
+		catch(NullPointerException | java.time.format.DateTimeParseException e) {
+			throw new IllegalArgumentException("Dates must use the format YYYY-MM-DD");
+		}
+		
+		if(end.isBefore(start)) {
+			throw new IllegalArgumentException("End date cannot be before start date");
+		}
 	}
 }

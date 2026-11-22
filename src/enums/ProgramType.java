@@ -21,6 +21,6 @@ public enum ProgramType {
             }
         }
 
-    throw new IllegalArgumentException("Unknown program type: " + value);
+        throw new IllegalArgumentException("Unknown program type: " + value);
     }
 }

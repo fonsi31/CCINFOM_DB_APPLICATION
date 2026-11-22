@@ -1,6 +1,9 @@
 package ui;
+
 import java.util.Scanner;
+import model.*;
 import util.*;
+import java.util.ArrayList;
 
 public class ApplicationMenu {
 	private Scanner sc;
@@ -64,8 +67,21 @@ public class ApplicationMenu {
 		}
 	}
 	
-	public static void displayApplications() {
-		//use service to retrieve applications;
+	public static void displayApplications(ArrayList<ApplicationModel> applications) {
+		if(applications.isEmpty()) {
+			System.out.print("No applications found");
+			return;
+		}
+		
+		int i = 1;
+		
+		for (ApplicationModel application: applications) {
+			System.out.print(i + ". Application Number: " + application.getAppno());
+			System.out.println("   Student Number: " + application.getStudno());
+			System.out.println("   Submitted at: " + application.getSubmitdt().toString());
+			System.out.println("   Status: " + application.getStatus());
+			i++;
+		}
 	}
 	
 	public static void displayOfferings() {

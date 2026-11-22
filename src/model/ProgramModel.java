@@ -18,7 +18,7 @@ public class ProgramModel {
     private BigDecimal incomecp;
 
     // Renewal-specific attributes
-    private int minunits;
+    private Integer minunits;
     private BigDecimal maxgpa;
 
     // FirstAward creation constructor
