@@ -53,7 +53,15 @@ public class CreateApplicationMenu {
 				break;
 			}
 			
-			OfferingModel offering = this.offeringService.getOfferingByOfferno(offerno);
+			OfferingModel offering;
+			try {
+				offering = this.offeringService.getOfferingByOfferno(offerno);
+			}
+			catch(SQLException e) {
+				System.out.println("Database error " + e.getMessage());
+				TerminalManager.pause(sc);
+				continue;
+			}
 			
 			if(offering == null) {
 				System.out.println("No offering found!");

@@ -21,10 +21,11 @@ public class Main {
 		//daos
 		ApplicationDAO applicationDAO = new ApplicationDAO(dbconn);
 		ProgramDAO programDAO = new ProgramDAO(dbconn);
+		OfferingDAO offeringDAO = new OfferingDAO(dbconn);
 		
 		//services
 		ApplicantService applicantService = new ApplicantService();
-		OfferingService offeringService = new OfferingService();
+		OfferingService offeringService = new OfferingService(offeringDAO);
 		ProgramService programService = new ProgramService(programDAO);
 		ApplicationService applicationService = new ApplicationService(applicationDAO, sc, programService);
 		

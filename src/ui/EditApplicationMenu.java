@@ -17,7 +17,7 @@ public class EditApplicationMenu {
 	}
 	
 	public void run() {
-		ApplicationModel application;
+		
 		String appno;
 		
 		while (true) {
@@ -31,6 +31,7 @@ public class EditApplicationMenu {
 				break;
 			}
 			
+			//get appno
 			System.out.println();
 			System.out.print("Enter appno of the application you want to edit (0 to go back): ");
 			appno = this.sc.nextLine();
@@ -39,48 +40,58 @@ public class EditApplicationMenu {
 				break;
 			}
 			
+			this.fieldSelectionAndNewValEntry(appno);
+		}
+	}
+	
+	public void fieldSelectionAndNewValEntry(String appno) {
+		int field;
+		while(true) {
+			System.out.println("[1] submit date");
+			System.out.println("[2] entryavg" );
+			System.out.println("[3] income");
+			System.out.println("[4] score");
+			System.out.println("[5] evaldate");
+			System.out.println("[6] evalby");
+			System.out.println("[7] status");
+			System.out.println("[8] decdate");
+			System.out.println("[9] remarks");
+			System.out.println("[10] back");
+			
+			System.out.println();
+			
+			System.out.print("Enter field: ");
+			field = InputValidator.getValidInt(sc, 1, 10);
+			
+			if(field == -1) {
+				System.out.println("Invalid Input");
+				TerminalManager.pause(sc);
+				continue;
+			}
+			
+			if(field == 10) {
+				break;
+			}
+			
+			String newVal;
+			
+			System.out.print("Set new value: ");
+			newVal = this.sc.nextLine();
+			
 			try {
-				application = this.applicationService.getApplicationsBy(1, appno, "", "").get(0);
+				this.applicationService.editApplication(appno, field, newVal);
 			}
 			catch(IllegalArgumentException e) {
 				e.printStackTrace();
 				TerminalManager.pause(sc);
-				continue;
 			}
 			catch(SQLException e) {
 				e.printStackTrace();
 				TerminalManager.pause(sc);
-				break;
 			}
 			
-			System.out.println("Choose a field to edit (0 to go back): ");
-			
-			/**
-			 * if application is of renewal type and the user enters 4 or 5
-			 * throw an invalid input
-			 */
-			if() {
-				
-			}
-			
-			/**
-			 * Editing happens here
-			 */
-			
-			
-		}
+			System.out.println("Changes Saved!");
+			TerminalManager.pause(sc);
+		}	
 	}
-	
-	public void displayOptions() {
-		System.out.println("[1] submit date");
-		System.out.println("[2] entryavg" );
-		System.out.println("[3] income");
-		System.out.println("[4] score");
-		System.out.println("[5] evaldate");
-		System.out.println("[6] evalby");
-		System.out.println("[7] status");
-		System.out.println("[8] decdate");
-		System.out.println("[9] remarks");
-	}
-	
 }

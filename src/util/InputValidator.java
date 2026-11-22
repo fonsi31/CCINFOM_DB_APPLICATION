@@ -88,4 +88,25 @@ public class InputValidator {
 			return false;
 		}
 	}  
+	
+	public static boolean isValidBigDecimal(String input) {
+		if(input == null) {
+			return false;
+		}
+		
+		BigDecimal deci;
+		
+		try {
+			deci = new BigDecimal(input);
+			
+			if (deci.compareTo(BigDecimal.ZERO) < 0) {
+				return false;
+			}
+			
+			return true;
+		}
+		catch(NumberFormatException e) {
+			return false;
+		}
+	}
 }

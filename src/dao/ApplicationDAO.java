@@ -163,19 +163,15 @@ public class ApplicationDAO {
 	}
 	
 	public ArrayList<ApplicationModel> getApplicationsBy(
-			String query, String identifier, String from, String to, int mode) throws SQLException{
+			String query, String... params) throws SQLException{
 		
 		ArrayList<ApplicationModel> applications = new ArrayList<>();
 		
 		try(Connection conn = this.dbConn.connect();
 			PreparedStatement pstmt = conn.prepareStatement(query)){
 			
-			if(mode == 9 || mode == 10) { //search filter is by date
-				pstmt.setString(1, from);
-				pstmt.setString(2, to);
-			}
-			else { //search filter is by a table identifier
-				pstmt.setString(1, identifier);
+			for(int i = 0; i < params.length; i++) {
+				pstmt.setString(i + 1, params[i]);
 			}
 			
 			try(ResultSet rs = pstmt.executeQuery()){
@@ -186,6 +182,26 @@ public class ApplicationDAO {
 				
 				return applications;
 			}
+		}
+	}
+	
+	public void updateApplication(
+			String query, String appno, String newVal, int mode) throws SQLException{
+		
+		try(Connection conn = this.dbConn.connect();
+			PreparedStatement pstmt = conn.prepareStatement(query)){
+			
+			if(mode == 1 || mode == 5 || mode == 8) {
+				pstmt.setObject(1, LocalDate.parse(newVal.trim()));
+			}
+			else if(mode == 2 || mode == 3 || mode == 4) {
+				pstmt.setBigDecimal(1, new BigDecimal(newVal));
+			}
+			
+			pstmt.setString(1, newVal);
+			pstmt.setString(2, appno);
+			
+			pstmt.executeUpdate();
 		}
 	}
 }

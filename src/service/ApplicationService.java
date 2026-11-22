@@ -3,6 +3,8 @@ package service;
 import java.util.ArrayList;
 import enums.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 import dao.*;
 import model.*;
 import util.InputValidator;
@@ -15,12 +17,15 @@ public class ApplicationService {
 	
 	private ApplicationDAO applicationDAO;
 	private ProgramService programService;
+	private OfferingService offeringService;
 	private Scanner sc;
 	
-	public ApplicationService(ApplicationDAO applicationDAO, Scanner sc, ProgramService programService) {
+	public ApplicationService(ApplicationDAO applicationDAO,
+			Scanner sc, ProgramService programService, OfferingService offeringService) {
 		this.applicationDAO = applicationDAO;
 		this.sc = sc;
 		this.programService = programService;
+		this.offeringService = offeringService;
 	}
 	
 	public ArrayList<ApplicationModel> getAllApplications() throws SQLException{
@@ -186,7 +191,7 @@ public class ApplicationService {
 			break;
 			
 		case 8: //by status
-			ApplicationStatus status = ApplicationStatus.fromDatabaseValue(identifier);
+			ApplicationStatus status = ApplicationStatus.fromDatabaseValue(identifier.replace(" ", ""));
 			identifier = status.toDatabaseValue();
 			
 			query = ApplicationDAO.BASE_SELECT + """
@@ -204,7 +209,8 @@ public class ApplicationService {
 					WHERE a.submitdt BETWEEN ? AND ?
 					ORDER BY a.submitdt, a.appno
 					""";
-			break;
+			
+			return this.applicationDAO.getApplicationsBy(query, from, to);
 			
 		case 10: //by evaluation date range
 			validateDateRange(from, to);
@@ -215,16 +221,17 @@ public class ApplicationService {
 					WHERE a.evaldate BETWEEN ? AND ?
 					ORDER BY a.evaldate, a.appno
 					""";
-			break;
+			
+			return this.applicationDAO.getApplicationsBy(query, from, to);
 			
 		default:
 			throw new IllegalArgumentException("Invalid Search mode!");
 		}
 		
-		return this.applicationDAO.getApplicationsBy(query, identifier, from, to, mode);
+		return this.applicationDAO.getApplicationsBy(query, identifier);
 	}
 	
-	//checks that both dates are valid yyyy-MM-dd and the end is not before the start
+	//checks that both dates are valid yyyy-mm-dd and the end is not before the start
 	private void validateDateRange(String from, String to) {
 		LocalDate start;
 		LocalDate end;
@@ -233,12 +240,165 @@ public class ApplicationService {
 			start = LocalDate.parse(from.trim());
 			end = LocalDate.parse(to.trim());
 		}
-		catch(NullPointerException | java.time.format.DateTimeParseException e) {
+		catch(NullPointerException | DateTimeParseException e) {
 			throw new IllegalArgumentException("Dates must use the format YYYY-MM-DD");
 		}
 		
 		if(end.isBefore(start)) {
 			throw new IllegalArgumentException("End date cannot be before start date");
 		}
+	}
+	
+	private void validateSubmitdt(String input, ApplicationModel application) throws SQLException{
+		LocalDate submitdt;
+		
+		OfferingModel applicationOffering = this.offeringService.getOfferingByOfferno(application.getOfferno());
+		
+		try {
+			submitdt = LocalDate.parse(input.trim());
+		}
+		catch(DateTimeParseException e) {
+			throw new IllegalArgumentException("Dates must use the format YYYY-MM-DD");
+		}
+		
+		if(submitdt.isBefore(applicationOffering.getOpendt()) ||
+			submitdt.isAfter(applicationOffering.getClosedt())) {
+			throw new IllegalArgumentException("Submit date must be within the offering's application window");
+		}
+	}
+	
+	private void validateEvalDate(String input, ApplicationModel application) throws SQLException{
+		LocalDate evalDate;
+		
+		try {
+			evalDate = LocalDate.parse(input.trim());
+		}
+		catch(DateTimeParseException e) {
+			throw new IllegalArgumentException("Dates must use the format YYYY-MM-DD");
+		}
+		
+		if(evalDate.isBefore(application.getSubmitdt())) {
+			throw new IllegalArgumentException("Evaluation must happen on or after submission");
+		}
+	}
+	
+	private void validateDecDate(String input, ApplicationModel application) throws SQLException{
+		LocalDate decDate;
+		
+		try {
+			decDate = LocalDate.parse(input.trim());
+		}
+		catch(DateTimeParseException e) {
+			throw new IllegalArgumentException("Dates must use the format YYYY-MM-DD");
+		}
+		
+		if(decDate.isBefore(application.getEvaldate())) {
+			throw new IllegalArgumentException("Decision must happen on or after evaluation");
+		}
+	}
+	
+	public void editApplication(
+			String appno, int mode, String newVal) throws SQLException{
+		
+		ApplicationModel application = this.getApplicationsBy(1, appno, null, null).get(0);
+		
+		//A staff tries to save changes of an outdated record
+		if(application.getRevno() != 
+				this.getApplicationsBy(1, appno, null, null).get(0).getRevno()) {
+			throw new IllegalArgumentException("Update Blocked. Please refresh/reload");
+		}
+		
+		//check if newVal is valid for entryavg, income, score
+		if(mode == 2 || mode == 3 || mode == 4) {
+			if(!InputValidator.isValidBigDecimal(newVal)) {
+				throw new IllegalArgumentException("Invalid input");
+			}
+			
+			OfferingModel offeringOfApp = this.offeringService.getOfferingByOfferno(application.getOfferno());
+			ProgramModel programOfApp = this.programService.getProgByProgCode(offeringOfApp.getProgcode());
+			
+			/**
+			 * if the field the user/staff wants to edit is entryavg or income
+			 * but the progtype is renewal
+			 */
+			if(mode != 4 && programOfApp.getProgtype() == ProgramType.RENEWAL) {
+				throw new IllegalArgumentException("Access Denied. This is a renewal application");
+			}
+		}
+
+		String header = """
+				UPDATE application
+				""";
+		String trailer = """
+				WHERE appno = ?
+				""";
+		String query;
+		
+		switch(mode) {
+			case 1: //edit submitdt
+				this.validateSubmitdt(newVal, application);
+				query = header + """
+						SET submitdt = ?
+						""" + trailer;
+				break;
+				
+			case 2: //edit entryavg
+				query = header + """
+						SET entryavg = ?
+						""" + trailer;
+				break;
+			
+			case 3: //edit income
+				query = header + """
+						SET income = ?
+						""" + trailer;
+				break;
+				
+			case 4: //score
+				query = header + """
+						SET score = ?
+						""" + trailer;
+				break;
+				
+			case 5: //evaldate
+				this.validateEvalDate(newVal, application);
+				query = header + """
+						SET evaldate = ?
+						""" + trailer;
+				break;
+				
+			case 6: //evalby
+				query = header + """
+						SET evalby = ?
+						""" + trailer;
+				break;
+			
+			case 7: //status
+				ApplicationStatus status = ApplicationStatus.fromDatabaseValue(newVal.replace(" ", ""));
+				newVal = status.toDatabaseValue();
+				
+				query = header + """
+						SET status = ?
+						""" + trailer;
+				break;
+				
+			case 8: //decdate
+				this.validateDecDate(newVal, application);	
+				query = header + """
+						SET decdate = ?
+						""" + trailer;
+				break;
+			
+			case 9: //remarks
+				query = header + """
+						SET remarks = ?
+						""" + trailer;
+				break;
+			
+			default:
+				throw new IllegalArgumentException("Invalid edit mode!");
+		}
+		
+		this.applicationDAO.updateApplication(query, appno, newVal, mode);
 	}
 }

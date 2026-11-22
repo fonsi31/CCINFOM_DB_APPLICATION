@@ -22,11 +22,11 @@ public class ApplicationSearchMenu {
 	public void run() {
 		
 		int choice;
-		String identifier = "";
+		String identifier = null;
 		
 		//only used when the user selects 9 or 10
-		String from = "";
-		String to = "";
+		String from = null;
+		String to = null;
 		
 		//applications that fits the search filter/key will be stored here
 		ArrayList<ApplicationModel> applications = new ArrayList<>();
@@ -52,17 +52,10 @@ public class ApplicationSearchMenu {
 				System.out.println("Enter date bounds");
 				System.out.print("from: ");
 				from = this.sc.nextLine();
+				
 				System.out.print("to: ");
 				to = this.sc.nextLine();
 				
-				from = from.trim();
-				to = to.trim();
-				
-				if(!InputValidator.isValidDate(from) || !InputValidator.isValidDate(to)) {
-					System.out.println("Invalid Date Inputs!");
-					TerminalManager.pause(sc);
-					continue;
-				}	
 			}
 			else { //choice >=1 && choice <= 10
 				System.out.print("Enter search identifier: ");
@@ -74,9 +67,11 @@ public class ApplicationSearchMenu {
 			}
 			catch(IllegalArgumentException e) {
 				e.printStackTrace();
+				TerminalManager.pause(sc);
 			}
 			catch(SQLException e) {
 				e.printStackTrace();
+				TerminalManager.pause(sc);
 			}
 			
 			ApplicationMenu.displayApplications(applications);
