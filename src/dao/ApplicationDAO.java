@@ -185,8 +185,8 @@ public class ApplicationDAO {
 		}
 	}
 	
-	public void updateApplication(
-			String query, String appno, String newVal, int mode) throws SQLException{
+	public boolean updateApplication(
+			String query, ApplicationModel app, String newVal, int mode) throws SQLException{
 		
 		try(Connection conn = this.dbConn.connect();
 			PreparedStatement pstmt = conn.prepareStatement(query)){
@@ -197,11 +197,17 @@ public class ApplicationDAO {
 			else if(mode == 2 || mode == 3 || mode == 4) {
 				pstmt.setBigDecimal(1, new BigDecimal(newVal));
 			}
+			else {
+				pstmt.setString(1, newVal);
+			}
 			
-			pstmt.setString(1, newVal);
-			pstmt.setString(2, appno);
 			
-			pstmt.executeUpdate();
+			pstmt.setString(2, app.getAppno());
+			pstmt.setInt(3, app.getRevno());
+			
+			int rows = pstmt.executeUpdate();
+			
+			return rows > 0;
 		}
 	}
 }

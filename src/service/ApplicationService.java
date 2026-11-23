@@ -302,12 +302,6 @@ public class ApplicationService {
 		
 		ApplicationModel application = this.getApplicationsBy(1, appno, null, null).get(0);
 		
-		//A staff tries to save changes of an outdated record
-		if(application.getRevno() != 
-				this.getApplicationsBy(1, appno, null, null).get(0).getRevno()) {
-			throw new IllegalArgumentException("Update Blocked. Please refresh/reload");
-		}
-		
 		//check if newVal is valid for entryavg, income, score
 		if(mode == 2 || mode == 3 || mode == 4) {
 			if(!InputValidator.isValidBigDecimal(newVal)) {
@@ -327,78 +321,66 @@ public class ApplicationService {
 		}
 
 		String header = """
-				UPDATE application
-				""";
+						UPDATE application
+						SET revno = revno + 1,""";
+		
 		String trailer = """
-				WHERE appno = ?
-				""";
+						WHERE appno = ?
+						AND revno = ?
+						""";
 		String query;
 		
 		switch(mode) {
 			case 1: //edit submitdt
 				this.validateSubmitdt(newVal, application);
-				query = header + """
-						SET submitdt = ?
-						""" + trailer;
+				query = header + " submitdt = ?\n" + trailer;
 				break;
 				
 			case 2: //edit entryavg
-				query = header + """
-						SET entryavg = ?
-						""" + trailer;
+				query = header + " entryavg = ?\n" + trailer;
 				break;
 			
 			case 3: //edit income
-				query = header + """
-						SET income = ?
-						""" + trailer;
+				query = header + " income = ?\n" + trailer;
 				break;
 				
 			case 4: //score
-				query = header + """
-						SET score = ?
-						""" + trailer;
+				query = header + " score = ?\n" + trailer;
 				break;
 				
 			case 5: //evaldate
 				this.validateEvalDate(newVal, application);
-				query = header + """
-						SET evaldate = ?
-						""" + trailer;
+				query = header + " evaldate = ?\n" + trailer;
 				break;
 				
 			case 6: //evalby
-				query = header + """
-						SET evalby = ?
-						""" + trailer;
+				query = header + " evalby = ?\n" + trailer;
 				break;
 			
 			case 7: //status
 				ApplicationStatus status = ApplicationStatus.fromDatabaseValue(newVal.replace(" ", ""));
 				newVal = status.toDatabaseValue();
 				
-				query = header + """
-						SET status = ?
-						""" + trailer;
+				query = header + " status = ?\n" + trailer;
 				break;
 				
 			case 8: //decdate
 				this.validateDecDate(newVal, application);	
-				query = header + """
-						SET decdate = ?
-						""" + trailer;
+				query = header + " decdate = ?\n" + trailer;
 				break;
 			
 			case 9: //remarks
-				query = header + """
-						SET remarks = ?
-						""" + trailer;
+				query = header + " remarks = ?\n" + trailer;
 				break;
 			
 			default:
 				throw new IllegalArgumentException("Invalid edit mode!");
 		}
 		
-		this.applicationDAO.updateApplication(query, appno, newVal, mode);
+		boolean isSuccess = this.applicationDAO.updateApplication(query, application, newVal, mode);
+		
+		if(!isSuccess) {
+			throw new IllegalArgumentException("You are editing an outdated record. Please reload and try again");
+		}
 	}
 }
