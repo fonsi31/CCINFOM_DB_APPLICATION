@@ -16,7 +16,7 @@ public class DocumentsMenu {
 		int appNo;
 		
 		System.out.println("============= Select an Application to Manage Documents for ============");
-		ApplicationMenu.displayApplications();
+		// wip: display applications after retrieving them from ApplicationService
 		System.out.print("Enter Application Number: ");
 	}
 	

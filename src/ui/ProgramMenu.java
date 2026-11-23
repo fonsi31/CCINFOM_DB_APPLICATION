@@ -3,16 +3,22 @@ package ui;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 import util.TerminalManager;
+import service.ProgramService;
+import java.util.ArrayList;
+import java.sql.SQLException;
+import model.ProgramModel;
 
 public class ProgramMenu { 
 	private Scanner sc;
 	private OfferingMenu offeringMenu;
 	private RenewalCheckMenu renewalCheckMenu;
+	private ProgramService programService;
 	
-	public ProgramMenu(Scanner sc, OfferingMenu offeringMenu, RenewalCheckMenu renewalCheckMenu){
+	public ProgramMenu(Scanner sc, OfferingMenu offeringMenu, RenewalCheckMenu renewalCheckMenu, ProgramService programService) {
 		this.sc = sc;
 		this.offeringMenu = offeringMenu;
 		this.renewalCheckMenu = renewalCheckMenu;
+		this.programService = programService;
 	}
 	
 	public void start() {
@@ -35,7 +41,7 @@ public class ProgramMenu {
 			if (choice == 1){
 				createProgramScreen();
 			} else if (choice == 2){
-				System.out.println("Searching Program...");
+				searchProgramScreen();
 			} else if (choice == 3){
 				System.out.println("Editing Program...");						
 			} else if (choice == 4){
@@ -161,4 +167,68 @@ public class ProgramMenu {
 	public static void displayPrograms() {
 		//use service to retrieve applicants
 	}
+	
+	private void searchProgramScreen() {
+		boolean searching = true;
+		int choice = -1;
+
+		while (searching) {
+			TerminalManager.clearScreen();
+
+			System.out.println("==========================================");
+			System.out.println("              SEARCH PROGRAM              ");
+			System.out.println("==========================================");
+			System.out.println("[1] Search by Program Code");
+			System.out.println("[2] Search by Program Name");
+			System.out.println("[3] Search by Agency Code");
+			System.out.println("[4] Search by Agency Name");
+			System.out.println("[5] Search by Program Type");
+			System.out.println("[6] Search by Active Status");
+			System.out.println("[0] Return");
+			System.out.print("Enter choice: ");
+
+			choice = -1;
+
+			try {
+				choice = sc.nextInt();
+				sc.nextLine();
+			} catch (InputMismatchException e) {
+				sc.nextLine();
+			}
+
+			if (choice == 0) {
+				searching = false;
+			} else if (choice >= 1 && choice <= 6) {
+				System.out.print("Enter search value: ");
+				String identifier = sc.nextLine();
+
+				try {
+					ArrayList<ProgramModel> programs = programService.getProgramsBy(choice, identifier);
+
+					if (programs.isEmpty()) {
+						System.out.println("No programs found.");
+					} else {
+						for (ProgramModel program : programs) {
+							System.out.println("------------------------------------------");
+							System.out.println("Program Code: " + program.getProgcode());
+							System.out.println("Program Name: " + program.getProgname());
+							System.out.println("Agency Code: " + program.getAgencode());
+							System.out.println("Program Type: " + program.getProgtype().toDatabaseValue());
+							System.out.println("Active: " + program.isActive());
+						}
+					}
+
+				} catch (SQLException | IllegalArgumentException e) {
+					System.out.println("Error: " + e.getMessage());
+				}
+
+				System.out.println();
+				System.out.print("Press Enter to continue...");
+				sc.nextLine();
+
+			} else {
+				System.out.println("Invalid input.");
+			}
+		}
+	}	
 }

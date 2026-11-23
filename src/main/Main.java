@@ -14,8 +14,8 @@ public class Main {
 		
 		//database connectivity instantiation (see util.DBConnection)
 		String url = "jdbc:mysql://localhost:3306/g08_scholapp";
-		String user = "root";
-		String pw = "mightyoten2006";
+		String user = "ccinfom_app";
+		String pw = new String(System.console().readPassword("MySQL password: "));
 		DBConnection dbconn = new DBConnection(url, user, pw);
 		
 		//daos
@@ -27,16 +27,16 @@ public class Main {
 		ApplicantService applicantService = new ApplicantService();
 		OfferingService offeringService = new OfferingService(offeringDAO);
 		ProgramService programService = new ProgramService(programDAO);
-		ApplicationService applicationService = new ApplicationService(applicationDAO, sc, programService);
+		ApplicationService applicationService = new ApplicationService(applicationDAO, sc, programService, offeringService);
 		
 		//menus/uis (built innermost first, then passed to the menus that open them)
 		OfferingMenu offeringMenu = new OfferingMenu(sc);
 		RenewalCheckMenu renewalCheckMenu = new RenewalCheckMenu(sc);
-		ProgramMenu programMenu = new ProgramMenu(sc, offeringMenu, renewalCheckMenu);
+		ProgramMenu programMenu = new ProgramMenu(sc, offeringMenu, renewalCheckMenu, programService);
 		
 		CreateApplicationMenu createApplicationMenu = new CreateApplicationMenu(sc, applicantService,
 				offeringService, applicationService);
-		ApplicationSearchMenu applicationSearchMenu = new ApplicationSearchMenu();
+		ApplicationSearchMenu applicationSearchMenu = new ApplicationSearchMenu(applicationService, sc);
 		ApplicationMenu applicationMenu = new ApplicationMenu(sc, createApplicationMenu, applicationSearchMenu);
 		
 		ApplicantMenu applicantMenu = new ApplicantMenu(sc);
