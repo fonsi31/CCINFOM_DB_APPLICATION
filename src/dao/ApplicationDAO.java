@@ -210,4 +210,23 @@ public class ApplicationDAO {
 			return rows > 0;
 		}
 	}
+	
+	public boolean deleteApplication(String appno, int revno) throws SQLException{
+		String query = """
+						DELETE FROM application
+						WHERE appno = ?
+						AND revno = ?
+						AND status = 'Submitted'
+						""";
+		
+		try(Connection conn = this.dbConn.connect();
+				PreparedStatement pstmt = conn.prepareStatement(query)){
+				
+				pstmt.setString(1, appno);
+				pstmt.setInt(2, revno);
+				
+				return pstmt.executeUpdate() > 0;
+		}
+		
+	}
 }

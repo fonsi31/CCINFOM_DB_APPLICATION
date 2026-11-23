@@ -383,4 +383,30 @@ public class ApplicationService {
 			throw new IllegalArgumentException("You are editing an outdated record. Please reload and try again");
 		}
 	}
+	
+	public void deleteApplication(String appno) throws SQLException{
+		ApplicationModel application = this.getApplicationsBy(1, appno, null, null).get(0);
+		
+		//check if status != submitted
+		if(application.getStatus() != ApplicationStatus.SUBMITTED) {
+			throw new IllegalArgumentException(
+				"Cannot delete: only Submitted applications can be deleted (current status: "
+				+ application.getStatus().toDatabaseValue() + ")");
+		}
+
+		boolean isSuccess;
+		
+		try {
+			isSuccess = this.applicationDAO.deleteApplication(appno, application.getRevno());
+		}
+		catch(SQLIntegrityConstraintViolationException e) {
+			throw new IllegalStateException(
+					"Cannot delete: application has documents or a renewal check");
+		}
+		
+		if(!isSuccess) {
+			throw new IllegalArgumentException(
+				"Deletion Blocked (stale record): please reload and try again");
+		}
+	}
 }
