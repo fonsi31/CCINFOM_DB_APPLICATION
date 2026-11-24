@@ -353,68 +353,61 @@ public class ApplicationDAO {
 		}
 	}
 	
-	//approves an Evaluated application if its offering still has a free slot
-	//lock, count and save run in ONE transaction on ONE connection, so two approvals
-	//for the same offering take turns and cannot both claim the last slot
-	//returns false if the record is stale or no longer Evaluated; throws if the offering is full
+	/**
+	 * approves an Evaluated application if its offering still has a free slot
+	* lock, count and save run in ONE transaction on ONE connection, so two approvals
+	* for the same offering take turns and cannot both claim the last slot
+	* returns false if the record is stale or no longer Evaluated; throws if the offering is full
+	*/
 	public boolean approveApplication(
 			String offerno, LocalDate decdate, String appno, int revno, String remarks) throws SQLException{
-		String lockQuery = """
-				select slots
+		String query = """
+				SELECT slots
 				from offering
 				where offerno = ?
 				FOR UPDATE
 				""";
 		
 		try(Connection conn = this.dbConn.connect()){
-			conn.setAutoCommit(false); //start the transaction: locks are now held until commit/rollback
+			conn.setAutoCommit(false);
 			
-			try {
-				//1. lock the offering row (other approvals for this offering wait here) and read its current slots
-				int slots;
-				try(PreparedStatement pstmt = conn.prepareStatement(lockQuery)){
-					pstmt.setString(1, offerno);
-					
-					try(ResultSet rs = pstmt.executeQuery()){
-						if(!rs.next()) {
-							conn.rollback();
-							throw new IllegalArgumentException("Cannot approve: offering not found");
-						}
-						slots = rs.getInt(1);
+			try(PreparedStatement pstmt = conn.prepareStatement(query)){
+				pstmt.setString(1, offerno);
+				
+				try(ResultSet rs = pstmt.executeQuery()){
+					if(!rs.next()) {
+						conn.rollback();
+						throw new IllegalArgumentException("Cannot approve: offering not found");
 					}
-				}
-				
-				//2. count current approvals (safe: we hold the offering lock)
-				if(this.getTakenSlots(conn, offerno) >= slots) {
-					conn.rollback();
-					throw new IllegalArgumentException("Cannot approve: Slots are full");
-				}
-				
-				//3. approve (only from Evaluated, with the stale-edit check)
-				if(!this.saveDecision(conn, "Approved", decdate, remarks, appno, revno)) {
+					
+					int slots = rs.getInt(1);
+					int takenSlots = this.getTakenSlots(offerno, conn);
+					
+					//no slots left
+					if(takenSlots >= slots) {
+						conn.rollback();
+						throw new IllegalArgumentException("Cannot approve: slots are already full");
+					}
+					
+					boolean isSuccess = this.saveDecision(conn, "Approved", decdate, remarks, appno, revno);
+					
+					if(isSuccess) {
+						conn.commit();
+						return true;
+					}
+					
 					conn.rollback();
 					return false;
 				}
-				
-				conn.commit(); //saves the approval and releases the lock
-				return true;
-			}
-			catch(SQLException | RuntimeException e) {
-				conn.rollback(); //any failure: undo everything and release the lock
-				throw e;
+				catch(SQLException | RuntimeException e) {
+					conn.rollback();
+					throw e;
+				}
 			}
 		}
 	}
 	
-	//number of Approved applications in an offering (own connection, e.g. for display)
-	public int getTakenSlots(String offerno) throws SQLException{
-		try(Connection conn = this.dbConn.connect()){
-			return this.getTakenSlots(conn, offerno);
-		}
-	}
-	
-	//number of Approved applications in an offering, on the given connection
-	private int getTakenSlots(Connection conn, String offerno) throws SQLException{
+	private int getTakenSlots(String offerno, Connection conn) throws SQLException{
 		String query = """
 				select count(*)
 				from application
@@ -430,25 +423,14 @@ public class ApplicationDAO {
 				return rs.getInt(1);
 			}
 		}
+		
 	}
 	
-	//records Rejected or Withdrawn (no slots involved, so a single statement on its own connection)
-	public boolean saveDecision(
-			String status, LocalDate decdate, String remarks, String appno, int revno) throws SQLException{
-		try(Connection conn = this.dbConn.connect()){
-			return this.saveDecision(conn, status, decdate, remarks, appno, revno);
-		}
-	}
-	
-	//saves a decision on the given connection
-	//Approved is only allowed from Evaluated; Rejected/Withdrawn from Submitted or Evaluated
-	//remarks: null keeps the existing remarks
-	//returns false if the record is stale (revno changed) or its status no longer allows this decision
-	private boolean saveDecision(Connection conn,
-			String status, LocalDate decdate, String remarks, String appno, int revno) throws SQLException{
-		String allowedFrom = status.equals("Approved")
-				? "and status = 'Evaluated'"
-				: "and status in ('Submitted', 'Evaluated')";
+	private boolean saveDecision(Connection conn, String status, LocalDate decdate,
+			String remarks, String appno, int revno) throws SQLException{
+		
+		String allowedFrom = status.equals("Approved") ? "and status = 'Evaluated'" :
+											"and status in ('Submitted', 'Evaluated')";
 		
 		String query = """
 				UPDATE application
@@ -460,14 +442,28 @@ public class ApplicationDAO {
 				and revno = ?
 				""" + allowedFrom;
 		
+		
+		
 		try(PreparedStatement pstmt = conn.prepareStatement(query)){
 			pstmt.setString(1, status);
 			pstmt.setDate(2, Date.valueOf(decdate));
 			pstmt.setString(3, remarks);
 			pstmt.setString(4, appno);
-			pstmt.setInt(5, revno);
+			pstmt.setInt(5,  revno);
 			
 			return pstmt.executeUpdate() == 1;
 		}
 	}
+	
+	public boolean saveDecision(String status, LocalDate decdate,
+			String remarks, String appno, int revno) throws SQLException{
+	
+		try(Connection conn = this.dbConn.connect()){
+
+			return this.saveDecision(conn, status, decdate, remarks, appno, revno);
+		}
+	}
 }
+	
+	
+	
