@@ -297,10 +297,26 @@ public class ApplicationService {
 		}
 	}
 	
-	public void editApplication(
-			String appno, int mode, String newVal) throws SQLException{
+	//returns the application with this appno, or null if none exists
+	public ApplicationModel findByAppno(String appno) throws SQLException{
+		if(appno == null || appno.trim().isEmpty()) {
+			return null;
+		}
 		
-		ApplicationModel application = this.getApplicationsBy(1, appno, null, null).get(0);
+		ArrayList<ApplicationModel> result = this.getApplicationsBy(1, appno.trim(), null, null);
+		
+		if(result.isEmpty()) {
+			return null;
+		}
+		
+		return result.get(0);
+	}
+	
+	//application = the record the staff member loaded and is editing
+	//(its revno is used for the stale-edit check, so it must not be reloaded here)
+	public void editApplication(
+			ApplicationModel application, int mode, String newVal) throws SQLException{
+		
 		
 		//check if newVal is valid for entryavg, income, score
 		if(mode == 2 || mode == 3 || mode == 4) {
@@ -384,14 +400,15 @@ public class ApplicationService {
 		}
 	}
 	
-	public void deleteApplication(String appno) throws SQLException{
-		ApplicationModel application = this.getApplicationsBy(1, appno, null, null).get(0);
+	//application = the record the staff member was shown and confirmed
+	public void deleteApplication(ApplicationModel application) throws SQLException{
+		String appno = application.getAppno();
 		
 		//check if status != submitted
 		if(application.getStatus() != ApplicationStatus.SUBMITTED) {
 			throw new IllegalArgumentException(
 				"Cannot delete: only Submitted applications can be deleted (current status: "
-				+ application.getStatus().toDatabaseValue() + ")");
+				+ application.getStatus().toDatabaseValue() + ")");	
 		}
 
 		boolean isSuccess;
@@ -407,6 +424,201 @@ public class ApplicationService {
 		if(!isSuccess) {
 			throw new IllegalArgumentException(
 				"Deletion Blocked (stale record): please reload and try again");
+		}
+	}
+	
+	//application = the record the staff member loaded and is evaluating
+	//evaldate is set to today; score, evaldate, evalby and the Evaluated state are saved together
+	public void evaluate(
+			ApplicationModel application, BigDecimal score, String evalby) throws SQLException{
+		
+		String appno = application.getAppno();
+		
+		//score: required, 0-100 (zero is a valid score)
+		if(score == null) {
+			throw new IllegalArgumentException("Score is required");
+		}
+		if(score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(new BigDecimal("100")) > 0) {
+			throw new IllegalArgumentException(
+					"Score should be within 0-100");
+		}
+		
+		//evaluator: required, fits evalby VARCHAR(100)
+		if(evalby == null || evalby.trim().isEmpty()) {
+			throw new IllegalArgumentException("Evaluator name is required");
+		}
+		evalby = evalby.trim();
+		if(evalby.length() > 100) {
+			throw new IllegalArgumentException("Evaluator name must be at most 100 characters");
+		}
+		
+		//an application shouldnt have an evaluation or a recorded decision yet
+		if(application.getStatus() != ApplicationStatus.SUBMITTED) {
+			throw new IllegalArgumentException(
+				"Cannot evaluate: only Submitted applications can be evaluated (current status: "
+				+ application.getStatus().toDatabaseValue() + ")");	
+		}
+		
+		//every required document must be submitted and Accepted
+		if(!this.applicationDAO.hasCompleteAcceptedDocs(appno)) {
+			throw new IllegalArgumentException(
+				"Cannot evaluate: a required document is missing, pending or rejected");
+		}
+		
+		OfferingModel offering = offeringService.getOfferingByOfferno(application.getOfferno());
+		if(offering == null) {
+			throw new IllegalStateException("Cannot evaluate: the application's offering was not found");
+		}
+		
+		ProgramModel program = programService.getProgByProgCode(offering.getProgcode());
+		if(program == null) {
+			throw new IllegalStateException("Cannot evaluate: the offering's program was not found");
+		}
+		
+		LocalDate evalDate = LocalDate.now();
+		
+		//eligibility depends on the program type
+		if(program.getProgtype() == ProgramType.RENEWAL) {
+			//renewal: needs its renewal check to be Eligible
+			if(!this.applicationDAO.hasEligibleRenewcheck(appno)) {
+				throw new IllegalArgumentException(
+						"Cannot evaluate: renewal application has no eligible renewal check");
+			}
+			
+			//evaluation cannot precede the renewal check it relies on
+			LocalDate checkdt = this.applicationDAO.getRenewcheckDate(appno);
+			if(checkdt != null && evalDate.isBefore(checkdt)) {
+				throw new IllegalArgumentException(
+						"Cannot evaluate: evaluation date is before the renewal check date (" + checkdt + ")");
+			}
+		}
+		else {
+			//first award: submitted figures must meet the program thresholds
+			if(application.getEntryavg() == null || application.getIncome() == null) {
+				throw new IllegalStateException(
+						"Cannot evaluate: first award application is missing its entry average or income");
+			}
+			if(application.getEntryavg().compareTo(program.getEntrymin()) < 0) {
+				throw new IllegalArgumentException(
+						"Cannot evaluate: entry average " + application.getEntryavg()
+						+ " is below the program minimum of " + program.getEntrymin());
+			}
+			if(application.getIncome().compareTo(program.getIncomecp()) > 0) {
+				throw new IllegalArgumentException(
+						"Cannot evaluate: income " + application.getIncome()
+						+ " exceeds the program ceiling of " + program.getIncomecp());
+			}
+		}
+		
+		//chronology: evaluation cannot precede submission or document verification
+		if(evalDate.isBefore(application.getSubmitdt())) {
+			throw new IllegalArgumentException(
+					"Cannot evaluate: evaluation date is before the submission date (" + application.getSubmitdt() + ")");
+		}
+		
+		LocalDate latestVerdate = this.applicationDAO.getLatestDocVerdate(appno);
+		if(latestVerdate != null && evalDate.isBefore(latestVerdate)) {
+			throw new IllegalArgumentException(
+					"Cannot evaluate: evaluation date is before a document verification date (" + latestVerdate + ")");
+		}
+		
+		//save score, evaldate, evalby and status together (stale-edit and status checked in the query)
+		boolean isSuccess = this.applicationDAO.saveEvaluationDetails(
+				appno, application.getRevno(), score, evalDate, evalby);
+		
+		if(!isSuccess) {
+			throw new IllegalArgumentException(
+					"Cannot evaluate: the application was changed by another user. Please reload and try again");
+		}
+	}
+	
+	//application = the record the staff member loaded
+	//decision: Approved, Rejected or Withdrawn; decdate is set to today
+	//remarks: required for Rejected and Withdrawn, optional for Approved
+	public void recordDecision(
+		ApplicationModel application, ApplicationStatus decision, String remarks) throws SQLException{
+		
+		ApplicationStatus currStatus = application.getStatus();	
+		String appno = application.getAppno();
+		
+		//only final states are decisions
+		if(decision != ApplicationStatus.APPROVED
+			&& decision != ApplicationStatus.REJECTED
+			&& decision != ApplicationStatus.WITHDRAWN) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: a decision must be Approved, Rejected or Withdrawn");
+		}
+		
+		//remarks: blank becomes null; Rejected/Withdrawn need a meaningful reason; fits VARCHAR(255)
+		if(remarks != null) {
+			remarks = remarks.trim();
+			if(remarks.isEmpty()) {
+				remarks = null;
+			}
+		}
+		if(decision != ApplicationStatus.APPROVED && remarks == null) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: a reason is required for " + decision.toDatabaseValue());
+		}
+		if(remarks != null && remarks.length() > 255) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: remarks must be at most 255 characters");
+		}
+		
+		//recording a decision needs that the application isnt alr final
+		if(currStatus != ApplicationStatus.SUBMITTED
+			&& currStatus != ApplicationStatus.EVALUATED) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: the application already has a final decision ("
+					+ currStatus.toDatabaseValue() + ")");
+		}
+		
+		//approving needs a completed evaluation and an offering that isn't cancelled
+		//(free slots are checked by the DAO inside the approval transaction)
+		if(decision == ApplicationStatus.APPROVED) {
+			if(currStatus != ApplicationStatus.EVALUATED) {
+				throw new IllegalArgumentException(
+					"Cannot approve application: the application needs to be evaluated first");
+			}
+			
+			OfferingModel appOffering = this.offeringService.getOfferingByOfferno(application.getOfferno());
+			if(appOffering == null) {
+				throw new IllegalStateException("Cannot approve application: offering not found");
+			}
+			if(appOffering.getStatus() == OfferingStatus.CANCELED) {
+				throw new IllegalArgumentException(
+					"Cannot approve application: the offering was cancelled");
+			}
+		}
+		
+		//decision date is today; it cannot precede submission or evaluation
+		LocalDate decdate = LocalDate.now();
+		
+		if(decdate.isBefore(application.getSubmitdt())) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: decision date is before the submission date ("
+					+ application.getSubmitdt() + ")");
+		}
+		if(application.getEvaldate() != null && decdate.isBefore(application.getEvaldate())) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: decision date is before the evaluation date ("
+					+ application.getEvaldate() + ")");
+		}
+		
+		//save (approval runs the slot check + save in one locked transaction)
+		boolean isSuccess;
+		if(decision == ApplicationStatus.APPROVED) {
+			isSuccess = this.applicationDAO.approveApplication(
+					application.getOfferno(), decdate, appno, application.getRevno(), remarks);
+		}
+		else {
+			isSuccess = this.applicationDAO.saveDecision(
+					decision.toDatabaseValue(), decdate, remarks, appno, application.getRevno());
+		}
+		
+		if(!isSuccess) {
+			throw new IllegalArgumentException(
+					"Cannot record decision: the application was changed by another user. Please reload and try again");
 		}
 	}
 }

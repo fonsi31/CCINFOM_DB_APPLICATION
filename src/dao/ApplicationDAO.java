@@ -90,7 +90,7 @@ public class ApplicationDAO {
 		String query = """
 				INSERT INTO application
 				(appno, studno, offerno, submitdt, entryavg, income)
-				VALUES (?, ?, ?, ?, ?)
+				VALUES (?, ?, ?, ?, ?, ?)
 				""";
 				
 			try(Connection conn = this.dbConn.connect();
@@ -227,6 +227,247 @@ public class ApplicationDAO {
 				
 				return pstmt.executeUpdate() > 0;
 		}
+	}
+	
+	public boolean hasCompleteAcceptedDocs(String appno) throws SQLException{
+		String query = """
+						select count(*)
+						from program_document pd join program p
+	                    on pd.progtype = p.progtype                    
+						join offering o
+	                    on p.progcode = o.progcode
+	                    join application a
+	                    on o.offerno = a.offerno
+	                    left join document d
+	                    on a.appno = d.appno
+	                    and d.doctype = pd.doctype
+						where a.appno = ?
+						and (d.appno is null or d.result != 'Accepted')
+						""";
 		
+		try(Connection conn = this.dbConn.connect();
+			PreparedStatement pstmt = conn.prepareStatement(query)){
+			
+			pstmt.setString(1, appno);
+			
+			try(ResultSet rs = pstmt.executeQuery()){
+				rs.next();
+				int count = rs.getInt(1);
+				
+				return count == 0;
+			}
+		}
+	}
+	
+	public boolean hasEligibleRenewcheck(String appno) throws SQLException{
+		String query = """
+						SELECT count(*)
+						FROM renewcheck
+						where appno = ?
+						and result = 'Eligible'
+						""";
+		
+		try(Connection conn = this.dbConn.connect();
+				PreparedStatement pstmt = conn.prepareStatement(query)){
+				
+				pstmt.setString(1, appno);
+				
+				try(ResultSet rs = pstmt.executeQuery()){
+					rs.next();
+					int count = rs.getInt(1);
+					
+					return count != 0;
+				}
+			}
+	}
+	
+	//latest verification date among the application's documents (null if none verified)
+	public LocalDate getLatestDocVerdate(String appno) throws SQLException{
+		String query = """
+						SELECT MAX(verdate)
+						FROM document
+						WHERE appno = ?
+						""";
+		
+		try(Connection conn = this.dbConn.connect();
+			PreparedStatement pstmt = conn.prepareStatement(query)){
+			
+			pstmt.setString(1, appno);
+			
+			try(ResultSet rs = pstmt.executeQuery()){
+				rs.next();
+				Date latest = rs.getDate(1);
+				return latest == null ? null : latest.toLocalDate();
+			}
+		}
+	}
+	
+	//date of the application's renewal check (null if it has none)
+	public LocalDate getRenewcheckDate(String appno) throws SQLException{
+		String query = """
+						SELECT checkdt
+						FROM renewcheck
+						WHERE appno = ?
+						""";
+		
+		try(Connection conn = this.dbConn.connect();
+			PreparedStatement pstmt = conn.prepareStatement(query)){
+			
+			pstmt.setString(1, appno);
+			
+			try(ResultSet rs = pstmt.executeQuery()){
+				if(rs.next()) {
+					return rs.getDate(1).toLocalDate();
+				}
+				return null;
+			}
+		}
+	}
+	
+	//saves score, evaluation date, evaluator and the Evaluated state together in one statement
+	//returns false if the record is stale (revno changed) or no longer Submitted
+	public boolean saveEvaluationDetails(String appno, int revno, BigDecimal score,
+			LocalDate evaldate, String evalby) throws SQLException{
+		String query = """
+						UPDATE application
+						SET score = ?,
+						    evaldate = ?,
+						    evalby = ?,
+						    status = 'Evaluated',
+						    revno = revno + 1
+						WHERE appno = ?
+						AND revno = ?
+						AND status = 'Submitted'
+						""";
+		
+		try(Connection conn = this.dbConn.connect();
+			PreparedStatement pstmt = conn.prepareStatement(query)){
+			
+			pstmt.setBigDecimal(1, score);
+			pstmt.setDate(2, Date.valueOf(evaldate));
+			pstmt.setString(3, evalby);
+			pstmt.setString(4, appno);
+			pstmt.setInt(5, revno);
+			
+			return pstmt.executeUpdate() == 1;
+		}
+	}
+	
+	//approves an Evaluated application if its offering still has a free slot
+	//lock, count and save run in ONE transaction on ONE connection, so two approvals
+	//for the same offering take turns and cannot both claim the last slot
+	//returns false if the record is stale or no longer Evaluated; throws if the offering is full
+	public boolean approveApplication(
+			String offerno, LocalDate decdate, String appno, int revno, String remarks) throws SQLException{
+		String lockQuery = """
+				select slots
+				from offering
+				where offerno = ?
+				FOR UPDATE
+				""";
+		
+		try(Connection conn = this.dbConn.connect()){
+			conn.setAutoCommit(false); //start the transaction: locks are now held until commit/rollback
+			
+			try {
+				//1. lock the offering row (other approvals for this offering wait here) and read its current slots
+				int slots;
+				try(PreparedStatement pstmt = conn.prepareStatement(lockQuery)){
+					pstmt.setString(1, offerno);
+					
+					try(ResultSet rs = pstmt.executeQuery()){
+						if(!rs.next()) {
+							conn.rollback();
+							throw new IllegalArgumentException("Cannot approve: offering not found");
+						}
+						slots = rs.getInt(1);
+					}
+				}
+				
+				//2. count current approvals (safe: we hold the offering lock)
+				if(this.getTakenSlots(conn, offerno) >= slots) {
+					conn.rollback();
+					throw new IllegalArgumentException("Cannot approve: Slots are full");
+				}
+				
+				//3. approve (only from Evaluated, with the stale-edit check)
+				if(!this.saveDecision(conn, "Approved", decdate, remarks, appno, revno)) {
+					conn.rollback();
+					return false;
+				}
+				
+				conn.commit(); //saves the approval and releases the lock
+				return true;
+			}
+			catch(SQLException | RuntimeException e) {
+				conn.rollback(); //any failure: undo everything and release the lock
+				throw e;
+			}
+		}
+	}
+	
+	//number of Approved applications in an offering (own connection, e.g. for display)
+	public int getTakenSlots(String offerno) throws SQLException{
+		try(Connection conn = this.dbConn.connect()){
+			return this.getTakenSlots(conn, offerno);
+		}
+	}
+	
+	//number of Approved applications in an offering, on the given connection
+	private int getTakenSlots(Connection conn, String offerno) throws SQLException{
+		String query = """
+				select count(*)
+				from application
+				where offerno = ?
+				and status = 'Approved'
+				""";
+		
+		try(PreparedStatement pstmt = conn.prepareStatement(query)){
+			pstmt.setString(1, offerno);
+			
+			try(ResultSet rs = pstmt.executeQuery()){
+				rs.next();
+				return rs.getInt(1);
+			}
+		}
+	}
+	
+	//records Rejected or Withdrawn (no slots involved, so a single statement on its own connection)
+	public boolean saveDecision(
+			String status, LocalDate decdate, String remarks, String appno, int revno) throws SQLException{
+		try(Connection conn = this.dbConn.connect()){
+			return this.saveDecision(conn, status, decdate, remarks, appno, revno);
+		}
+	}
+	
+	//saves a decision on the given connection
+	//Approved is only allowed from Evaluated; Rejected/Withdrawn from Submitted or Evaluated
+	//remarks: null keeps the existing remarks
+	//returns false if the record is stale (revno changed) or its status no longer allows this decision
+	private boolean saveDecision(Connection conn,
+			String status, LocalDate decdate, String remarks, String appno, int revno) throws SQLException{
+		String allowedFrom = status.equals("Approved")
+				? "and status = 'Evaluated'"
+				: "and status in ('Submitted', 'Evaluated')";
+		
+		String query = """
+				UPDATE application
+				SET status = ?,
+				decdate = ?,
+				remarks = COALESCE(?, remarks),
+				revno = revno + 1
+				where appno = ?
+				and revno = ?
+				""" + allowedFrom;
+		
+		try(PreparedStatement pstmt = conn.prepareStatement(query)){
+			pstmt.setString(1, status);
+			pstmt.setDate(2, Date.valueOf(decdate));
+			pstmt.setString(3, remarks);
+			pstmt.setString(4, appno);
+			pstmt.setInt(5, revno);
+			
+			return pstmt.executeUpdate() == 1;
+		}
 	}
 }
