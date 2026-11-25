@@ -18,14 +18,17 @@ public class ApplicationService {
 	private ApplicationDAO applicationDAO;
 	private ProgramService programService;
 	private OfferingService offeringService;
+	private ApplicantService applicantService;
 	private Scanner sc;
 	
 	public ApplicationService(ApplicationDAO applicationDAO,
-			Scanner sc, ProgramService programService, OfferingService offeringService) {
+			Scanner sc, ProgramService programService, OfferingService offeringService,
+			ApplicantService applicantService) {
 		this.applicationDAO = applicationDAO;
 		this.sc = sc;
 		this.programService = programService;
 		this.offeringService = offeringService;
+		this.applicantService = applicantService;
 	}
 	
 	public ArrayList<ApplicationModel> getAllApplications() throws SQLException{
@@ -253,6 +256,9 @@ public class ApplicationService {
 		LocalDate submitdt;
 		
 		OfferingModel applicationOffering = this.offeringService.getOfferingByOfferno(application.getOfferno());
+		if(applicationOffering == null) {
+			throw new IllegalStateException("The application's offering was not found");
+		}
 		
 		try {
 			submitdt = LocalDate.parse(input.trim());
@@ -261,6 +267,30 @@ public class ApplicationService {
 			throw new IllegalArgumentException("Dates must use the format YYYY-MM-DD");
 		}
 		
+		LocalDate present = LocalDate.now();
+		
+		//check if submit date is in the future
+		if(submitdt.isAfter(present)) {
+			throw new IllegalArgumentException("Submit date can't be in the future");
+		}
+		
+		//check if submitdt is before applicant's regdate
+		ApplicantModel applicant = this.applicantService.findByStudno(application.getStudno());
+		if(applicant == null) {
+			throw new IllegalStateException("The application's applicant was not found");
+		}
+		if(submitdt.isBefore(applicant.getRegdate())) {
+			throw new IllegalArgumentException(
+					"Submit date cannot be before the applicant's registration date (" + applicant.getRegdate() + ")");
+		}
+		
+		//check if application's submit date is after the reception dates of its documents
+		if(!this.applicationDAO.isBeforeAllDocsRecvdateDates(application.getAppno(), submitdt)) {
+			throw new IllegalArgumentException(
+					"Submit date must be before the reception date of all its documents");
+		}
+		
+		//check if submit date is within the application window
 		if(submitdt.isBefore(applicationOffering.getOpendt()) ||
 			submitdt.isAfter(applicationOffering.getClosedt())) {
 			throw new IllegalArgumentException("Submit date must be within the offering's application window");
@@ -314,90 +344,115 @@ public class ApplicationService {
 	
 	//application = the record the staff member loaded and is editing
 	//(its revno is used for the stale-edit check, so it must not be reloaded here)
+	//ordinary edits: submission facts only, and only while the application is Submitted
+	//modes: 1 submit date, 2 entry average (FirstAward), 3 income (FirstAward), 4 remarks
+	//evaluation fields change through evaluate()/reopenEvaluation(),
+	//status and decision date through recordDecision()
+	//application = the record the staff member loaded and is editing
 	public void editApplication(
 			ApplicationModel application, int mode, String newVal) throws SQLException{
 		
-		
-		//check if newVal is valid for entryavg, income, score
-		if(mode == 2 || mode == 3 || mode == 4) {
-			if(!InputValidator.isValidBigDecimal(newVal)) {
-				throw new IllegalArgumentException("Invalid input");
-			}
-			
-			OfferingModel offeringOfApp = this.offeringService.getOfferingByOfferno(application.getOfferno());
-			ProgramModel programOfApp = this.programService.getProgByProgCode(offeringOfApp.getProgcode());
-			
-			/**
-			 * if the field the user/staff wants to edit is entryavg or income
-			 * but the progtype is renewal
-			 */
-			if(mode != 4 && programOfApp.getProgtype() == ProgramType.RENEWAL) {
-				throw new IllegalArgumentException("Access Denied. This is a renewal application");
-			}
+		//ordinary corrections are made while the application is submitted
+		if(application.getStatus() != ApplicationStatus.SUBMITTED) {
+			throw new IllegalArgumentException(
+				"Cannot edit: only Submitted applications can be edited (current status: "
+				+ application.getStatus().toDatabaseValue() + ")."
+				+ " To correct an evaluation, reopen it first.");
 		}
-
-		String header = """
-						UPDATE application
-						SET revno = revno + 1,""";
 		
-		String trailer = """
-						WHERE appno = ?
-						AND revno = ?
-						""";
-		String query;
+		newVal = (newVal == null) ? "" : newVal.trim();
+		String column;
 		
 		switch(mode) {
-			case 1: //edit submitdt
+			case 1: //submit date
 				this.validateSubmitdt(newVal, application);
-				query = header + " submitdt = ?\n" + trailer;
+				column = "submitdt";
 				break;
 				
-			case 2: //edit entryavg
-				query = header + " entryavg = ?\n" + trailer;
+			case 2: //entry average (FirstAward only, 0-100)
+				this.requireFirstAward(application);
+				BigDecimal entryavg = this.parseAmount(newVal, "Entry average");
+				if(entryavg.compareTo(new BigDecimal("100")) > 0) {
+					throw new IllegalArgumentException("Entry average must be between 0 and 100");
+				}
+				newVal = entryavg.toPlainString();
+				column = "entryavg";
 				break;
 			
-			case 3: //edit income
-				query = header + " income = ?\n" + trailer;
-				break;
-				
-			case 4: //score
-				query = header + " score = ?\n" + trailer;
-				break;
-				
-			case 5: //evaldate
-				this.validateEvalDate(newVal, application);
-				query = header + " evaldate = ?\n" + trailer;
-				break;
-				
-			case 6: //evalby
-				query = header + " evalby = ?\n" + trailer;
+			case 3: //declared annual household income (FirstAward only, >= 0)
+				this.requireFirstAward(application);
+				BigDecimal income = this.parseAmount(newVal, "Income");
+				if(income.compareTo(new BigDecimal("9999999999.99")) > 0) { //DECIMAL(12,2) limit
+					throw new IllegalArgumentException("Income is too large");
+				}
+				newVal = income.toPlainString();
+				column = "income";
 				break;
 			
-			case 7: //status
-				ApplicationStatus status = ApplicationStatus.fromDatabaseValue(newVal.replace(" ", ""));
-				newVal = status.toDatabaseValue();
-				
-				query = header + " status = ?\n" + trailer;
-				break;
-				
-			case 8: //decdate
-				this.validateDecDate(newVal, application);	
-				query = header + " decdate = ?\n" + trailer;
-				break;
-			
-			case 9: //remarks
-				query = header + " remarks = ?\n" + trailer;
+			case 4: //remarks (optional; blank clears them)
+				if(newVal.length() > 255) {
+					throw new IllegalArgumentException("Remarks must be at most 255 characters");
+				}
+				if(newVal.isEmpty()) {
+					newVal = null;
+				}
+				column = "remarks";
 				break;
 			
 			default:
 				throw new IllegalArgumentException("Invalid edit mode!");
 		}
 		
+		//status = 'Submitted' in the query too, in case it was evaluated or decided since it was loaded
+		String query = "UPDATE application\n"
+				+ "SET revno = revno + 1, " + column + " = ?\n"
+				+ "WHERE appno = ?\n"
+				+ "AND revno = ?\n"
+				+ "AND status = 'Submitted'";
+		
 		boolean isSuccess = this.applicationDAO.updateApplication(query, application, newVal, mode);
 		
 		if(!isSuccess) {
 			throw new IllegalArgumentException("You are editing an outdated record. Please reload and try again");
 		}
+	}
+	
+	//entry average and income only apply to FirstAward applications
+	private void requireFirstAward(ApplicationModel application) throws SQLException{
+		OfferingModel offering = this.offeringService.getOfferingByOfferno(application.getOfferno());
+		if(offering == null) {
+			throw new IllegalStateException("The application's offering was not found");
+		}
+		
+		ProgramModel program = this.programService.getProgByProgCode(offering.getProgcode());
+		if(program == null) {
+			throw new IllegalStateException("The offering's program was not found");
+		}
+		
+		if(program.getProgtype() != ProgramType.FIRSTAWARD) {
+			throw new IllegalArgumentException(
+					"Entry average and income only apply to First Award applications");
+		}
+	}
+	
+	//parses a non-negative amount with at most 2 decimal places (zero is a real value)
+	private BigDecimal parseAmount(String input, String label) {
+		BigDecimal value;
+		try {
+			value = new BigDecimal(input);
+		}
+		catch(NumberFormatException e) {
+			throw new IllegalArgumentException(label + " must be a number");
+		}
+		
+		if(value.compareTo(BigDecimal.ZERO) < 0) {
+			throw new IllegalArgumentException(label + " cannot be negative");
+		}
+		if(value.stripTrailingZeros().scale() > 2) {
+			throw new IllegalArgumentException(label + " can have at most 2 decimal places");
+		}
+		
+		return value;
 	}
 	
 	//application = the record the staff member was shown and confirmed
@@ -535,6 +590,27 @@ public class ApplicationService {
 	//application = the record the staff member loaded
 	//decision: Approved, Rejected or Withdrawn; decdate is set to today
 	//remarks: required for Rejected and Withdrawn, optional for Approved
+	//controlled correction: an Evaluated application whose evaluation is no longer valid
+	//(evidence changed, or the evaluation was wrong) has its evaluation cleared and returns
+	//to Submitted, so it can be evaluated again with all checks re-run
+	//application = the record the staff member loaded and confirmed
+	public void reopenEvaluation(ApplicationModel application) throws SQLException{
+		
+		if(application.getStatus() != ApplicationStatus.EVALUATED) {
+			throw new IllegalArgumentException(
+				"Cannot reopen evaluation: only Evaluated applications can be reopened (current status: "
+				+ application.getStatus().toDatabaseValue() + ")");
+		}
+		
+		boolean isSuccess = this.applicationDAO.resetEvalFields(
+				application.getAppno(), application.getRevno());
+		
+		if(!isSuccess) {
+			throw new IllegalArgumentException(
+				"Cannot reopen evaluation: the application was changed by another user. Please reload and try again");
+		}
+	}
+	
 	public void recordDecision(
 		ApplicationModel application, ApplicationStatus decision, String remarks) throws SQLException{
 		

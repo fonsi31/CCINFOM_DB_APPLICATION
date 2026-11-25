@@ -9,11 +9,14 @@ public class ApplicationMenu {
 	private Scanner sc;
 	private CreateApplicationMenu createMenu;
 	private ApplicationSearchMenu searchMenu;
+	private EditApplicationMenu editMenu;
 	
-	public ApplicationMenu(Scanner sc, CreateApplicationMenu createMenu, ApplicationSearchMenu searchMenu) {
+	public ApplicationMenu(Scanner sc, CreateApplicationMenu createMenu, ApplicationSearchMenu searchMenu,
+			EditApplicationMenu editMenu) {
 		this.sc = sc;
 		this.createMenu = createMenu;
 		this.searchMenu = searchMenu;
+		this.editMenu = editMenu;
 	}
 	
 	public void run() {  
@@ -43,7 +46,7 @@ public class ApplicationMenu {
 					break;
 					
 				case 3:
-					
+					this.editMenu.run();
 					break;
 					
 				case 4:

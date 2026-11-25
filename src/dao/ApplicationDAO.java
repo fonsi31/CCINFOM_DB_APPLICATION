@@ -191,11 +191,16 @@ public class ApplicationDAO {
 		try(Connection conn = this.dbConn.connect();
 			PreparedStatement pstmt = conn.prepareStatement(query)){
 			
-			if(mode == 1 || mode == 5 || mode == 8) {
-				pstmt.setObject(1, LocalDate.parse(newVal.trim()));
+			//modes (see ApplicationService.editApplication):
+			//1 submit date, 2 entry average, 3 income, 4 remarks (null clears them)
+			if(mode == 1) {
+				pstmt.setDate(1, Date.valueOf(LocalDate.parse(newVal.trim())));
 			}
-			else if(mode == 2 || mode == 3 || mode == 4) {
+			else if(mode == 2 || mode == 3) {
 				pstmt.setBigDecimal(1, new BigDecimal(newVal));
+			}
+			else if(newVal == null) {
+				pstmt.setNull(1, Types.VARCHAR);
 			}
 			else {
 				pstmt.setString(1, newVal);
@@ -463,6 +468,56 @@ public class ApplicationDAO {
 			return this.saveDecision(conn, status, decdate, remarks, appno, revno);
 		}
 	}
+	
+	public boolean isBeforeAllDocsRecvdateDates(String appno, LocalDate submitdt) throws SQLException{
+		String query = """
+					select count(*)
+					from application a join document d
+					on a.appno = d.appno
+					where a.appno = ?
+					and ? > d.recvdate
+					""";
+		
+		try(Connection conn = this.dbConn.connect();
+			PreparedStatement pstmt = conn.prepareStatement(query)){
+			
+			pstmt.setString(1, appno);
+			pstmt.setDate(2, Date.valueOf(submitdt));
+			
+			try(ResultSet rs = pstmt.executeQuery()){
+				rs.next();
+				
+				return rs.getInt(1) == 0;
+			}
+		}
+	}
+	
+	//controlled correction: clears the evaluation and returns the application to Submitted
+	//in ONE statement, so the record is never Evaluated without its evaluation fields
+	//only allowed from Evaluated; returns false if stale or no longer Evaluated
+	public boolean resetEvalFields(String appno, int revno) throws SQLException{
+		String query = """
+				UPDATE application
+				SET score = null,
+				evaldate = null,
+				evalby = null,
+				status = 'Submitted',
+				revno = revno + 1
+				where appno = ?
+				and revno = ?
+				and status = 'Evaluated'
+				""";
+		
+		try(Connection conn = this.dbConn.connect();
+				PreparedStatement pstmt = conn.prepareStatement(query)){
+				
+				pstmt.setString(1, appno);
+				pstmt.setInt(2, revno);
+				
+				return pstmt.executeUpdate() == 1;
+			}
+	}
+	
 }
 	
 	

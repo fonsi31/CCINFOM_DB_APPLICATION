@@ -36,7 +36,15 @@ public class CreateApplicationMenu {
 				break;
 			}
 			
-			ApplicantModel applicant = this.applicantService.findByStudno(applicantno);
+			ApplicantModel applicant;
+			try {
+				applicant = this.applicantService.findByStudno(applicantno);
+			}
+			catch(SQLException e) {
+				System.out.println("Database error " + e.getMessage());
+				TerminalManager.pause(sc);
+				continue;
+			}
 			
 			if(applicant == null) {
 				System.out.println("No applicant found!");

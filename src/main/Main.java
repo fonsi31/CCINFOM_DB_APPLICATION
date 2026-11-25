@@ -22,12 +22,14 @@ public class Main {
 		ApplicationDAO applicationDAO = new ApplicationDAO(dbconn);
 		ProgramDAO programDAO = new ProgramDAO(dbconn);
 		OfferingDAO offeringDAO = new OfferingDAO(dbconn);
+		ApplicantDAO applicantDAO = new ApplicantDAO(dbconn);
 		
 		//services
-		ApplicantService applicantService = new ApplicantService();
+		ApplicantService applicantService = new ApplicantService(applicantDAO);
 		OfferingService offeringService = new OfferingService(offeringDAO);
 		ProgramService programService = new ProgramService(programDAO);
-		ApplicationService applicationService = new ApplicationService(applicationDAO, sc, programService);
+		ApplicationService applicationService = new ApplicationService(applicationDAO, sc, programService,
+				offeringService, applicantService);
 		
 		//menus/uis (built innermost first, then passed to the menus that open them)
 		OfferingMenu offeringMenu = new OfferingMenu(sc);
@@ -36,11 +38,13 @@ public class Main {
 		
 		CreateApplicationMenu createApplicationMenu = new CreateApplicationMenu(sc, applicantService,
 				offeringService, applicationService);
-		ApplicationSearchMenu applicationSearchMenu = new ApplicationSearchMenu();
-		ApplicationMenu applicationMenu = new ApplicationMenu(sc, createApplicationMenu, applicationSearchMenu);
+		ApplicationSearchMenu applicationSearchMenu = new ApplicationSearchMenu(applicationService, sc);
+		EditApplicationMenu editApplicationMenu = new EditApplicationMenu(applicationService, sc);
+		ApplicationMenu applicationMenu = new ApplicationMenu(sc, createApplicationMenu, applicationSearchMenu,
+				editApplicationMenu);
 		
 		ApplicantMenu applicantMenu = new ApplicantMenu(sc);
-		DocumentsMenu documentsMenu = new DocumentsMenu(sc);
+		DocumentsMenu documentsMenu = new DocumentsMenu(sc, applicationService);
 		ReportsMenu reportsMenu = new ReportsMenu(sc);
 		
 		MainMenu mainMenu = new MainMenu(sc, applicantMenu, programMenu,

@@ -59,6 +59,15 @@ public class EditApplicationMenu {
 				continue;
 			}
 			
+			//only Submitted applications can be edited (the service checks this again on save)
+			if(application.getStatus() != enums.ApplicationStatus.SUBMITTED) {
+				System.out.println("Only Submitted applications can be edited (current status: "
+						+ application.getStatus().toDatabaseValue() + ").");
+				System.out.println("To correct an evaluation, reopen it first.");
+				TerminalManager.pause(sc);
+				continue;
+			}
+			
 			this.fieldSelectionAndNewValEntry(application);
 		}
 	}
@@ -70,21 +79,16 @@ public class EditApplicationMenu {
 			System.out.println("Editing " + application.getAppno()
 					+ " (student " + application.getStudno()
 					+ ", status " + application.getStatus() + ")");
-			System.out.println("[1] submit date");
-			System.out.println("[2] entryavg" );
-			System.out.println("[3] income");
-			System.out.println("[4] score");
-			System.out.println("[5] evaldate");
-			System.out.println("[6] evalby");
-			System.out.println("[7] status");
-			System.out.println("[8] decdate");
-			System.out.println("[9] remarks");
-			System.out.println("[10] back");
+			System.out.println("[1] Submit date        (current: " + application.getSubmitdt() + ")");
+			System.out.println("[2] Entry average      (current: " + application.getEntryavg() + ")  - First Award only");
+			System.out.println("[3] Income             (current: " + application.getIncome() + ")  - First Award only");
+			System.out.println("[4] Remarks            (current: " + application.getRemarks() + ")");
+			System.out.println("[5] Back");
 			
 			System.out.println();
 			
 			System.out.print("Enter field: ");
-			field = InputValidator.getValidInt(sc, 1, 10);
+			field = InputValidator.getValidInt(sc, 1, 5);
 			
 			if(field == -1) {
 				System.out.println("Invalid Input");
@@ -92,13 +96,21 @@ public class EditApplicationMenu {
 				continue;
 			}
 			
-			if(field == 10) {
+			if(field == 5) {
 				break;
 			}
 			
 			String newVal;
 			
-			System.out.print("Set new value: ");
+			if(field == 1) {
+				System.out.print("New submit date (YYYY-MM-DD): ");
+			}
+			else if(field == 4) {
+				System.out.print("New remarks (leave blank to clear): ");
+			}
+			else {
+				System.out.print("New value: ");
+			}
 			newVal = this.sc.nextLine();
 			
 			try {
