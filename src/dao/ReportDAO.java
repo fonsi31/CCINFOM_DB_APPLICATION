@@ -22,7 +22,12 @@ public class ReportDAO {
     public record ApplicantParticipationRow(String studno, String fullname, long totalSubmissions) {
 
     }
+	
+	public record OfferingApplicationsRow(String offerno, String title, long totalApplications) {
 
+	}
+
+	//preserves zero-activity parent record, uses LEFT JOIN
     public ArrayList<ApplicantParticipationRow> getApplicantSubmissionParticipation(int year) throws SQLException {
 
         String query = """
@@ -60,4 +65,44 @@ public class ReportDAO {
 
         return rows;
     }
+	
+	//preserves zero-activity parent record, uses LEFT JOIN
+	public ArrayList<OfferingApplicationsRow> getApplicationsReceivedByOffering(int year) throws SQLException {
+
+		String query = """
+			SELECT o.offerno, o.title,
+				COUNT(a.appno) AS total_applications
+			FROM offering o
+			LEFT JOIN application a
+				ON o.offerno = a.offerno
+				AND a.submitdt >= ?
+				AND a.submitdt < ?
+			GROUP BY o.offerno, o.title
+			ORDER BY total_applications DESC, o.offerno
+			""";
+
+		LocalDate start = LocalDate.of(year, 1, 1);
+		LocalDate end = start.plusYears(1);
+		ArrayList<OfferingApplicationsRow> rows = new ArrayList<>();
+
+		try (Connection conn = dbConn.connect();
+			 PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+			pstmt.setDate(1, Date.valueOf(start));
+			pstmt.setDate(2, Date.valueOf(end));
+
+			try (ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					rows.add(new OfferingApplicationsRow(
+						rs.getString("offerno"),
+						rs.getString("title"),
+						rs.getLong("total_applications")
+					));
+				}
+			}
+		}
+
+		return rows;
+	}	
+	
 }

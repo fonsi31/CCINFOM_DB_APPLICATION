@@ -7,6 +7,7 @@ import util.InputValidator;
 import util.TerminalManager;
 import service.ReportService;
 import dao.ReportDAO.ApplicantParticipationRow;
+import dao.ReportDAO.OfferingApplicationsRow;
 
 public class ReportsMenu {
 	
@@ -39,6 +40,7 @@ public class ReportsMenu {
 					break;
 					
 				case 2:
+					applicationsReceivedByOfferingReport();
 					break;
 					
 				case 3:
@@ -57,6 +59,8 @@ public class ReportsMenu {
 			}
 		}
 	}
+	
+	//preserves zero-activity parent record
 	
 	private void applicantParticipationReport(){
 		int year = -1;
@@ -88,6 +92,50 @@ public class ReportsMenu {
 
 				System.out.println("--------------------------------------------------------------");
 				System.out.println("Total applicants: " + rows.size());
+			}
+
+		} catch (SQLException | IllegalArgumentException e) {
+			System.out.println("Error generating a report: " + e.getMessage());
+		}
+
+		TerminalManager.pause(sc);
+	}
+	
+
+	private void applicationsReceivedByOfferingReport() {
+		int year = -1;
+
+		TerminalManager.clearScreen();
+
+		System.out.println("Applications Received by Offering");
+		System.out.println("========================================");
+		System.out.print("Enter reporting year: ");
+		year = InputValidator.getValidInt(sc, 1900, 9998);
+
+		if (year == -1) {
+			System.out.println("Invalid year!");
+			TerminalManager.pause(sc);
+			return;
+		}
+
+		try {
+			ArrayList<OfferingApplicationsRow> rows = reportService.getApplicationsReceivedByOffering(year);
+
+			if (rows.isEmpty()) {
+				System.out.println("There are no offerings.");
+			} else {
+				System.out.printf("%-14s %-50s %12s%n", "Offering No.", "Title", "Applications");
+				System.out.println("------------------------------------------------------------------------------");
+
+				for (OfferingApplicationsRow row : rows) {
+					System.out.printf("%-14s %-50s %12d%n",
+						row.offerno(),
+						row.title(),
+						row.totalApplications());
+				}
+
+				System.out.println("------------------------------------------------------------------------------");
+				System.out.println("Total offerings: " + rows.size());
 			}
 
 		} catch (SQLException | IllegalArgumentException e) {
